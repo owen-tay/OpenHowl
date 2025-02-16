@@ -39,3 +39,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments (adjust folder name as needed)
+venv/
+.env/
+.venv/
+
+# FastAPI uploads or generated files
+sounds/
+
+# Next.js / Node.js
+node_modules/
+.next/
+dist/
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+

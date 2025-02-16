@@ -1,103 +1,99 @@
-// File: components/SoundEffectsModal.jsx
+// SoundEffectsModal.jsx
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { useSwipe } from "../hooks/useSwipe"; // Adjust the path as needed
-import { useSentValue } from "../hooks/useSentValue"; // Our debouncing hook
-import { 
-  LuBarcode, 
-  LuWaves, 
-  LuArrowDown, 
-  LuArrowUp, 
-  LuRotateCcw, 
+import { updateSound } from "../../api";
+import { useSwipe } from "../hooks/useSwipe";       // Custom hook for swipe events
+import { useSentValue } from "../hooks/useSentValue"; // Custom hook for debouncing
+import {
+  LuBarcode,
+  LuWaves,
+  LuArrowDown,
+  LuArrowUp,
+  LuRotateCcw,
   LuZap,
   LuPencil,
   LuPlay,
-  LuPause,
+  LuPause
 } from "react-icons/lu";
 
-export default function SoundEffectsModal({
-  isOpen,
-  onClose,
-  soundId,
-  soundName,      // Received sound name from parent
-  soundLength,    // in ms
-  soundUrl,       // The sound URL from your JSON DB; if absent, no preview is available.
-  initialVolume = 70,
-  initialTrimStart = 0,
-  initialTrimEnd = soundLength,
-}) {
-  if (!isOpen) return null;
+function SoundEffectsModal({ isOpen, onClose, soundData }) {
+  // Return null if the modal is not open.
+  if (!isOpen) {
+    return null;
+  }
 
-  const [volume, setVolume] = useState(initialVolume);
-  const [trimStart, setTrimStart] = useState(initialTrimStart);
-  const [trimEnd, setTrimEnd] = useState(initialTrimEnd);
-
-  // Effects state for toggling various audio effects.
-  const [effects, setEffects] = useState({
-    echo: false,
-    reverb: false,
-    lowpass: false,
-    highpass: false,
-    reverse: false,
-    distort: false,
-  });
-
-  const toggleEffect = (effectName) => {
-    setEffects((prev) => {
-      const newEffects = { ...prev, [effectName]: !prev[effectName] };
-      console.log(`Effect ${effectName} toggled to ${newEffects[effectName]}`);
-      return newEffects;
-    });
-  };
-
-  // Use the unified hook to track horizontal swipe for volume control.
-  const swipeHandlers = useSwipe((delta) => {
-    let newVolume = volume + delta * 0.2;
-    newVolume = Math.max(0, Math.min(100, newVolume));
-    setVolume(Math.round(newVolume));
-    console.log(`Sound ${soundId} volume adjusted to ${newVolume}`);
-  });
-
-  // Handlers for the trim sliders.
-  const handleTrimStartChange = (e) => {
-    const newStart = parseInt(e.target.value, 10);
-    if (newStart <= trimEnd) {
-      setTrimStart(newStart);
-      console.log(`Trim start set to ${newStart} ms`);
-    }
-  };
-
-  const handleTrimEndChange = (e) => {
-    const newEnd = parseInt(e.target.value, 10);
-    if (newEnd >= trimStart) {
-      setTrimEnd(newEnd);
-      console.log(`Trim end set to ${newEnd} ms`);
-    }
-  };
-
-  // Debounced (sent) values.
-  const sentVolume = useSentValue(volume, 1000);
-  const sentTrimStart = useSentValue(trimStart, 1000);
-  const sentTrimEnd = useSentValue(trimEnd, 1000);
-
-  useEffect(() => {
-    console.log(`Updating volume for sound ${soundId}: ${sentVolume}`);
-    // TODO: Replace with an actual API call.
-  }, [sentVolume, soundId]);
-
-  useEffect(() => {
-    console.log(
-      `Updating trim for sound ${soundId}: Start ${sentTrimStart} ms, End ${sentTrimEnd} ms`
-    );
-    // TODO: Replace with an actual API call.
-  }, [sentTrimStart, sentTrimEnd, soundId]);
-
-  // Audio preview functionality.
-  const audioRef = useRef(null);
+  // Initialize local state using values from soundData.
+  const [volume, setVolume] = useState(soundData.volume);
+  const [trimStart, setTrimStart] = useState(soundData.trim_start);
+  const [trimEnd, setTrimEnd] = useState(soundData.trim_end);
+  const [effects, setEffects] = useState(soundData.effects);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Set up swipe handlers for adjusting the volume.
+  const swipeHandlers = useSwipe((delta) => {
+    let newVolume = volume + delta * 0.2;
+    if (newVolume < 0) {
+      newVolume = 0;
+    }
+    if (newVolume > 100) {
+      newVolume = 100;
+    }
+    setVolume(Math.round(newVolume));
+  });
+
+  // Use custom hooks to debounce volume and trim changes.
+  const debouncedVolume = useSentValue(volume, 1000);
+  const debouncedTrimStart = useSentValue(trimStart, 1000);
+  const debouncedTrimEnd = useSentValue(trimEnd, 1000);
+
+  // When the debounced volume changes, update the backend.
+  useEffect(() => {
+    async function updateVolume() {
+      const updatedSound = { ...soundData, volume: debouncedVolume };
+      try {
+        await updateSound(updatedSound);
+      } catch (error) {
+        console.error("Failed to update volume:", error);
+      }
+    }
+    updateVolume();
+  }, [debouncedVolume, soundData]);
+
+  // When the debounced trim values change, update the backend.
+  useEffect(() => {
+    async function updateTrim() {
+      const updatedSound = {
+        ...soundData,
+        trim_start: debouncedTrimStart,
+        trim_end: debouncedTrimEnd
+      };
+      try {
+        await updateSound(updatedSound);
+      } catch (error) {
+        console.error("Failed to update trim values:", error);
+      }
+    }
+    updateTrim();
+  }, [debouncedTrimStart, debouncedTrimEnd, soundData]);
+
+  // Toggle an effect and update the backend immediately.
+  const toggleEffect = async (effectName) => {
+    const newEffects = { ...effects, [effectName]: !effects[effectName] };
+    setEffects(newEffects);
+    const updatedSound = { ...soundData, effects: newEffects };
+    try {
+      await updateSound(updatedSound);
+    } catch (error) {
+      console.error("Failed to update effects:", error);
+    }
+  };
+
+  // Audio preview functionality using a ref.
+  const audioRef = useRef(null);
   const togglePreview = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      return;
+    }
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
@@ -107,129 +103,199 @@ export default function SoundEffectsModal({
     }
   };
 
+  // The modal structure is kept simple and clear.
   return (
-    <dialog open className="modal animate-fadeIn">
-      <div className="modal-box">
-        <h3 className="font-bold text-lg flex items-center gap-2 animate-bounce">
-          <LuPencil size={24} />
-          {soundName}
+    <dialog
+      open
+      style={{
+        padding: "20px",
+        border: "none",
+        borderRadius: "10px",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
+      }}
+    >
+      <div>
+        <h3 style={{
+          fontWeight: "bold",
+          fontSize: "20px",
+          marginBottom: "10px",
+          display: "flex",
+          alignItems: "center"
+        }}>
+          <LuPencil style={{ marginRight: "8px" }} /> {soundData.name}
         </h3>
-        <div className="py-6">
+        <div style={{ marginBottom: "20px" }}>
+          {/* Volume Control Section */}
           <div
-            className="flex flex-col items-center text-secondary mb-4 hover:scale-110 active:scale-110 ease-in-out duration-100 touch-none select-none hover:text-primary active:text-primary"
             {...swipeHandlers}
-            style={{ touchAction: "none" }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              marginBottom: "10px"
+            }}
           >
-            <div
-              className="radial-progress"
-              style={{ "--value": volume }}
-              role="progressbar"
-            >
+            <div style={{
+              width: "100px",
+              height: "100px",
+              borderRadius: "50%",
+              backgroundColor: "#ddd",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "5px"
+            }}>
               {volume}%
             </div>
-            <span className="text-sm mt-1">
-              Drag right/left to adjust volume
-            </span>
+            <div style={{ fontSize: "12px" }}>Drag left/right to adjust volume</div>
           </div>
 
-          <div className="mb-4">
-            <p className="font-medium mb-2">Audio Effects</p>
-            <div className="flex flex-wrap gap-2 justify-center">
+          {/* Audio Effects Section */}
+          <div style={{ marginBottom: "20px" }}>
+            <p>Audio Effects</p>
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "10px"
+            }}>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.echo ? "btn-primary" : ""}`}
                 onClick={() => toggleEffect("echo")}
+                style={{
+                  backgroundColor: effects.echo ? "#0070f3" : "#ccc",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  border: "none",
+                  cursor: "pointer"
+                }}
               >
-                <LuBarcode size={24} />
+                <LuBarcode />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.reverb ? "btn-primary" : ""}`}
                 onClick={() => toggleEffect("reverb")}
+                style={{
+                  backgroundColor: effects.reverb ? "#0070f3" : "#ccc",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  border: "none",
+                  cursor: "pointer"
+                }}
               >
-                <LuWaves size={24} />
+                <LuWaves />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.lowpass ? "btn-primary" : ""}`}
                 onClick={() => toggleEffect("lowpass")}
+                style={{
+                  backgroundColor: effects.lowpass ? "#0070f3" : "#ccc",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  border: "none",
+                  cursor: "pointer"
+                }}
               >
-                <LuArrowDown size={24} />
+                <LuArrowDown />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.highpass ? "btn-primary" : ""}`}
                 onClick={() => toggleEffect("highpass")}
+                style={{
+                  backgroundColor: effects.highpass ? "#0070f3" : "#ccc",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  border: "none",
+                  cursor: "pointer"
+                }}
               >
-                <LuArrowUp size={24} />
+                <LuArrowUp />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.reverse ? "btn-primary" : ""}`}
                 onClick={() => toggleEffect("reverse")}
+                style={{
+                  backgroundColor: effects.reverse ? "#0070f3" : "#ccc",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  border: "none",
+                  cursor: "pointer"
+                }}
               >
-                <LuRotateCcw size={24} />
+                <LuRotateCcw />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.distort ? "btn-primary" : ""}`}
                 onClick={() => toggleEffect("distort")}
+                style={{
+                  backgroundColor: effects.distort ? "#0070f3" : "#ccc",
+                  padding: "10px",
+                  borderRadius: "5px",
+                  border: "none",
+                  cursor: "pointer"
+                }}
               >
-                <LuZap size={24} />
+                <LuZap />
               </button>
             </div>
           </div>
 
-          <div className="mb-4">
-            <p className="font-medium mb-2">Audio Trim</p>
-            <div className="mb-2">
-              <label className="block text-sm">
-                Start: {trimStart} ms
+          {/* Audio Trim Section */}
+          <div style={{ marginBottom: "20px" }}>
+            <p>Audio Trim</p>
+            <div>
+              <label>
+                Start: {trimStart} ms<br />
                 <input
                   type="range"
                   min="0"
-                  max={soundLength}
+                  max={soundData.length}
                   value={trimStart}
-                  onChange={handleTrimStartChange}
-                  className="range range-secondary"
+                  onChange={(e) => setTrimStart(parseInt(e.target.value, 10))}
                 />
               </label>
             </div>
-            <div className="mb-2">
-              <label className="block text-sm">
-                End: {trimEnd} ms
+            <div>
+              <label>
+                End: {trimEnd} ms<br />
                 <input
                   type="range"
                   min="0"
-                  max={soundLength}
+                  max={soundData.length}
                   value={trimEnd}
-                  onChange={handleTrimEndChange}
-                  className="range range-primary"
+                  onChange={(e) => setTrimEnd(parseInt(e.target.value, 10))}
                 />
               </label>
             </div>
           </div>
 
-          <div className="mb-4 flex flex-col items-center">
-            <p className="font-medium mb-2">Audio Preview</p>
-            {soundUrl ? (
-              <>
-                <button className="btn mb-2" onClick={togglePreview}>
-                  {isPlaying ? (
-                    <LuPause size={24} className="animate-spin" />
-                  ) : (
-                    <LuPlay size={24} className="animate-bounce" />
-                  )}
+          {/* Audio Preview Section */}
+          <div style={{ marginBottom: "20px" }}>
+            <p>Audio Preview</p>
+            {soundData.file_path ? (
+              <div>
+                <button onClick={togglePreview} style={{
+                  padding: "10px",
+                  borderRadius: "5px",
+                  border: "none",
+                  backgroundColor: "#0070f3",
+                  color: "#fff",
+                  cursor: "pointer"
+                }}>
+                  {isPlaying ? <LuPause /> : <LuPlay />}
                 </button>
-                <audio
-                  ref={audioRef}
-                  src={soundUrl}
-                  onEnded={() => setIsPlaying(false)}
-                />
-              </>
+                <audio ref={audioRef} src={soundData.file_path} onEnded={() => setIsPlaying(false)} />
+              </div>
             ) : (
-              <p className="text-sm">Cannot find sound URL to Preview. Please check the Json file or create the sound again.</p>
+              <p>No sound file available for preview.</p>
             )}
           </div>
         </div>
+        <button onClick={onClose} style={{
+          padding: "10px 20px",
+          borderRadius: "5px",
+          border: "none",
+          backgroundColor: "#ccc",
+          cursor: "pointer"
+        }}>
+          Close
+        </button>
       </div>
-      <form method="dialog" className="modal-backdrop backdrop-blur-md">
-        <button onClick={onClose}>close</button>
-      </form>
     </dialog>
   );
 }
+
+export default SoundEffectsModal;

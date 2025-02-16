@@ -1,0 +1,22 @@
+[
+    {
+      "id": "dummy-sound-1",
+      "name": "Test Sound",
+      "length": 10000,
+      "volume": 70,
+      "playing": false,
+      "effects": {
+        "echo": false,
+        "reverb": false,
+        "lowpass": false,
+        "highpass": false,
+        "reverse": false,
+        "distort": false
+      },
+      "trim_start": 0,
+      "trim_end": 10000,
+      "file_path": "",
+      "file_format": ""
+    }
+  ]
+  

@@ -2,16 +2,25 @@
 import React, { useState, useEffect } from "react";
 import SoundEffectsModal from "./SoundEffectsModal";
 import { useLongPress } from "../hooks/useLongPress";
+// Import updateSound API for updating playing status (if backend integration is desired)
+import { updateSound } from "../../api";
 
-export default function SoundButton({
-  soundId,
-  soundName = "SOUND NAME",
-  soundLength = 10000, // in ms
-}) {
-  var [isActive, setIsActive] = useState(false);
-  var [showModal, setShowModal] = useState(false);
+export default function SoundButton(props) {
+  // Use soundData if available; otherwise fallback to individual props.
+  const soundId = props.soundData ? props.soundData.id : props.soundId;
+  const soundName = props.soundData ? props.soundData.name : props.soundName;
+  const soundLength = props.soundData
+    ? props.soundData.length
+    : props.soundLength || 10000; // in ms
 
-  var longPressEvent = useLongPress(function () {
+  // Initialize isActive state based on soundData.playing if provided, else false.
+  const [isActive, setIsActive] = useState(
+    props.soundData ? props.soundData.playing : false
+  );
+  const [showModal, setShowModal] = useState(false);
+
+  // Set up long press to show the modal.
+  const longPressEvent = useLongPress(function () {
     console.log("Long press detected on sound " + soundId);
     setShowModal(true);
   }, 500);
@@ -19,15 +28,27 @@ export default function SoundButton({
   // Handler for starting the sound.
   function handleStart() {
     console.log("Starting sound " + soundId + ": " + soundName);
-    // TODO: Send a POST request to the backend to start the sound.
     setIsActive(true);
+    // If a full sound object is available, update its playing status in the backend.
+    if (props.soundData) {
+      const updatedSound = { ...props.soundData, playing: true };
+      updateSound(updatedSound).catch((error) =>
+        console.error("Error updating playing status:", error)
+      );
+    }
   }
 
   // Handler for stopping the sound.
   function handleStop() {
     console.log("Stopping sound " + soundId + ": " + soundName);
-    // TODO: Send a POST request to the backend to stop the sound.
     setIsActive(false);
+    // If a full sound object is available, update its playing status in the backend.
+    if (props.soundData) {
+      const updatedSound = { ...props.soundData, playing: false };
+      updateSound(updatedSound).catch((error) =>
+        console.error("Error updating playing status:", error)
+      );
+    }
   }
 
   // Toggle between starting and stopping the sound.
@@ -54,27 +75,6 @@ export default function SoundButton({
       }
     };
   }, [isActive, soundLength, soundId]);
-
-  
-  /*
-This is for websockets. I will deal with this later.
-
-
-  useEffect(function () {
-    var ws = new WebSocket("ws://your-backend-websocket-url");
-    ws.onmessage = function (event) {
-      var data = JSON.parse(event.data);
-      // Check if the message corresponds to this sound.
-      if (data.soundId === soundId) {
-        // For example, update isActive based on the backend's status.
-        setIsActive(data.isPlaying);
-      }
-    };
-    return function () {
-      ws.close();
-    };
-  }, [soundId]);
-  */
 
   return (
     <>
@@ -148,7 +148,7 @@ This is for websockets. I will deal with this later.
             setShowModal(false);
           }}
           soundId={soundId}
-          // pass in the current trimmed start/end values to json idk
+          // Pass in the current trimmed start/end values (using original logic)
           initialTrimStart={0}
           initialTrimEnd={Math.floor(soundLength / 1000)}
         />
