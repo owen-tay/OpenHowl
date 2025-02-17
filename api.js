@@ -1,48 +1,107 @@
 // api.js
+const API_BASE_URL = process.env.NEXT_PUBLIC_OPENHOWL_API_URL || "http://localhost:8000";
 
-// Use an environment variable for the API base URL.
-// During development, this should be something like "http://localhost:8000"
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-/**
- * Retrieves the list of sounds from the FastAPI backend.
- */
-export async function getSounds() {
-  try {
-    // Fetch from the backend using the base URL.
-    const response = await fetch(`${API_BASE_URL}/sounds`);
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch sounds");
-    }
-    const soundsData = await response.json();
-    return soundsData;
-  } catch (error) {
-    console.error("Error in getSounds:", error);
-    throw error;
+// Helper function to handle API responses
+async function handleResponse(response) {
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || response.statusText);
   }
+  return response.json();
 }
 
-/**
- * Sends a PUT request to update a sound.
- * @param {Object} sound - The sound object to update.
- */
+// Get the stored auth token
+function getAuthToken() {
+  return localStorage.getItem('authToken');
+}
+
+// API Functions
+export async function login(password) {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  });
+  const data = await handleResponse(response);
+  localStorage.setItem('authToken', data.token);
+  return data;
+}
+
+export async function getSounds() {
+  const response = await fetch(`${API_BASE_URL}/sounds`);
+  return handleResponse(response);
+}
+
 export async function updateSound(sound) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/sounds/${sound.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(sound)
-    });
-    if (!response.ok) {
-      throw new Error("Failed to update sound");
-    }
-    const updatedSound = await response.json();
-    return updatedSound;
-  } catch (error) {
-    console.error("Error in updateSound:", error);
-    throw error;
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required');
   }
+
+  const response = await fetch(`${API_BASE_URL}/sounds/${sound.id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(sound),
+  });
+  return handleResponse(response);
+}
+
+export async function uploadSound(file, name) {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('name', name);
+
+  const response = await fetch(`${API_BASE_URL}/sounds/upload`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  return handleResponse(response);
+}
+
+export async function uploadYouTubeSound(youtubeUrl, soundName) {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/sounds/youtube`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      youtube_url: youtubeUrl,
+      sound_name: soundName,
+    }),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteSound(soundId) {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/sounds/${soundId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return handleResponse(response);
 }

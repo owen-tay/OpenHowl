@@ -1,10 +1,19 @@
 # models.py
+from typing import Optional
 from pydantic import BaseModel, Field
 
+
+class LoginRequest(BaseModel):
+    password: str
+
+class YouTubeBody(BaseModel):
+    youtube_url: str
+    sound_name: Optional[str] = None
+
 class Sound(BaseModel):
-    id: str = None
+    id: Optional[str] = None
     name: str
-    length: int  # Maximum length in ms
+    length: int = 0
     volume: int = 70
     playing: bool = False
     effects: dict = Field(default_factory=lambda: {
@@ -16,6 +25,6 @@ class Sound(BaseModel):
         "distort": False,
     })
     trim_start: int = 0
-    trim_end: int = 0  # Will be set to match length if not provided
-    file_path: str = ""   # Path to the stored file in the sounds folder
-    file_format: str = "" # File format, e.g. 'mp3', 'wav'
+    trim_end: int = 0
+    file_path: str = ""
+    file_format: str = ""

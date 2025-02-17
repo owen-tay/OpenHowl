@@ -29,16 +29,12 @@ export default function HomePage() {
     <div className="min-h-screen bg-base-200 flex flex-col items-center">
       <div className="w-full max-w-4xl py-3 px-4 text-center">
         <p className="text-content text-md">Click to play • Hold to edit</p>
-        {isAdmin && (
-          <div className="mt-4">
-            <AddSound />
-          </div>
-        )}
+
       </div>
       
       <div className="w-full max-w-4xl">
-        <SoundBoard />
-      </div>
+      <SoundBoard isAdmin={isAdmin} />
+            </div>
     </div>
   );
 }

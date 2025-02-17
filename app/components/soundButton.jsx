@@ -20,7 +20,7 @@ export default function SoundButton(props) {
   const [showModal, setShowModal] = useState(false);
 
   // Set up long press to show the modal.
-  const longPressEvent = useLongPress(function () {
+  const longPressEvent = useLongPress(() => {
     console.log("Long press detected on sound " + soundId);
     setShowModal(true);
   }, 500);
@@ -29,7 +29,6 @@ export default function SoundButton(props) {
   function handleStart() {
     console.log("Starting sound " + soundId + ": " + soundName);
     setIsActive(true);
-    // If a full sound object is available, update its playing status in the backend.
     if (props.soundData) {
       const updatedSound = { ...props.soundData, playing: true };
       updateSound(updatedSound).catch((error) =>
@@ -42,7 +41,6 @@ export default function SoundButton(props) {
   function handleStop() {
     console.log("Stopping sound " + soundId + ": " + soundName);
     setIsActive(false);
-    // If a full sound object is available, update its playing status in the backend.
     if (props.soundData) {
       const updatedSound = { ...props.soundData, playing: false };
       updateSound(updatedSound).catch((error) =>
@@ -53,28 +51,45 @@ export default function SoundButton(props) {
 
   // Toggle between starting and stopping the sound.
   function handleClick() {
-    if (isActive) {
-      handleStop();
-    } else {
-      handleStart();
-    }
+    isActive ? handleStop() : handleStart();
   }
 
   // Automatically stop the sound after its duration.
-  useEffect(function () {
-    var timer;
+  useEffect(() => {
+    let timer;
     if (isActive) {
-      timer = setTimeout(function () {
+      timer = setTimeout(() => {
         console.log("Sound " + soundId + " finished playing");
         setIsActive(false);
       }, soundLength);
     }
-    return function () {
-      if (timer) {
-        clearTimeout(timer);
-      }
+    return () => {
+      if (timer) clearTimeout(timer);
     };
   }, [isActive, soundLength, soundId]);
+
+  // Build a complete soundData object to pass to the modal.
+  // If props.soundData exists, use it; otherwise, create a default object.
+  const fullSoundData = props.soundData || {
+    id: soundId,
+    name: soundName,
+    length: soundLength,
+    volume: 70,
+    playing: false,
+    effects: {
+      echo: false,
+      reverb: false,
+      lowpass: false,
+      highpass: false,
+      reverse: false,
+      distort: false,
+      
+    },
+    trim_start: 0,
+    trim_end: Math.floor(soundLength / 1000),
+    file_path: "",
+    file_format: "",
+  };
 
   return (
     <>
@@ -107,8 +122,7 @@ export default function SoundButton(props) {
                 strokeWidth="3"
                 strokeLinecap="round"
                 d="M 0 30 c 10 0 10 -20 20 -20 s 10 20 20 20 s 10 -20 20 -20 s 10 20 20 20 s 10 -20 20 -20 
-                   s 10 20 20 20 s 10 -20 20 -20 s 10 20 20 20 s 10 -20 20 -20 s 10 20 20 20 s 10 -20 20 -20 
-                   s 10 20 20 20 s 10 -20 20 -20"
+                   s 10 20 20 20 s 10 -20 20 -20 s 10 20 20 20 s 10 -20 20 -20 s 10 20 20 20 s 10 -20 20 -20"
               />
             </svg>
           </div>
@@ -144,13 +158,8 @@ export default function SoundButton(props) {
       {showModal && (
         <SoundEffectsModal
           isOpen={showModal}
-          onClose={function () {
-            setShowModal(false);
-          }}
-          soundId={soundId}
-          // Pass in the current trimmed start/end values (using original logic)
-          initialTrimStart={0}
-          initialTrimEnd={Math.floor(soundLength / 1000)}
+          onClose={() => setShowModal(false)}
+          soundData={fullSoundData}
         />
       )}
     </>

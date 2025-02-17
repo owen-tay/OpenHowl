@@ -4,24 +4,38 @@ import { useRouter } from "next/navigation";
 import { IoIosHelpCircleOutline } from "react-icons/io";
 
 function LoginPage() {
-  var [password, setPassword] = useState("");
-  var [error, setError] = useState(null);
-  var [loading, setLoading] = useState(false);
-  var router = useRouter();
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  function handleLogin() {
+  async function handleLogin() {
     setError(null);
     setLoading(true);
 
-    if (password === "admin123") {
-      localStorage.setItem("authToken", "fake_admin_token");
-      localStorage.setItem("isAdmin", "true");
+    try {
+      // Call your FastAPI backend at /auth/login
+      const response = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+
+      if (!response.ok) {
+        // e.g. returns 401 if password is invalid
+        throw new Error("Invalid password");
+      }
+
+      // If valid, the server returns { token: "...", role: "admin" | "user" }
+      const data = await response.json();
+
+      // Store the token and admin status in localStorage
+      localStorage.setItem("authToken", data.token); 
+      localStorage.setItem("isAdmin", data.role === "admin" ? "true" : "false");
+
+      // Navigate to home
       router.push("/");
-    } else if (password === "friendpassword") {
-      localStorage.setItem("authToken", "fake_user_token");
-      localStorage.setItem("isAdmin", "false");
-      router.push("/");
-    } else {
+    } catch (err) {
       setError("Invalid password");
       setLoading(false);
     }
@@ -35,6 +49,7 @@ function LoginPage() {
     <div className="flex flex-col items-center justify-center h-screen bg-base-200">
       <div className="card w-96 bg-base-100 shadow-xl p-6 animate-fadeIn">
         <h1 className="text-2xl font-bold text-center mb-4">Login</h1>
+        
         <div className="flex justify-center items-center">
           <input
             type="password"
@@ -51,6 +66,7 @@ function LoginPage() {
             <IoIosHelpCircleOutline className="mb-4" size={35} />
           </div>
         </div>
+        
         <button
           onClick={handleLogin}
           className="btn btn-primary w-full mb-4"
@@ -62,6 +78,7 @@ function LoginPage() {
             "Login"
           )}
         </button>
+        
         {error !== null && (
           <p className="text-error mt-2 text-center">{error}</p>
         )}
