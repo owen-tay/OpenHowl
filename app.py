@@ -1,28 +1,25 @@
 import os
-from dotenv import load_dotenv
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, File, UploadFile, Form, Header
-from fastapi.middleware.cors import CORSMiddleware
 import json
 import uuid
-import subprocess
-from pydub import AudioSegment
-from pydantic import BaseModel
-from models import Sound, YouTubeBody
-from fastapi import FastAPI, HTTPException
-from audioHandler import load_audio, trim_audio, apply_effects, play_audio
-from fastapi.responses import StreamingResponse
 import io
-from fastapi import Request
-from fastapi import FastAPI, HTTPException
-import os
-import discord
-import asyncio
 import subprocess
+import asyncio
+from typing import List, Optional
+from pydantic import BaseModel
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, File, UploadFile, Form, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+
+# Discord imports
+import discord
 from discord.ext import commands
 from discord import FFmpegPCMAudio
-from dotenv import load_dotenv
 
+# Audio handling
+from pydub import AudioSegment
+from models import Sound, YouTubeBody
+from audioHandler import load_audio, trim_audio, apply_effects, play_audio
 
 # Load environment variables
 load_dotenv(os.path.join(os.getcwd(), ".env.local"))
@@ -34,11 +31,11 @@ USER_TOKEN = "OPENHOWL_USER_TOKEN"
 # Read environment variables with new naming
 ADMIN_PW = os.getenv("OPENHOWL_ADMIN_PASSWORD")
 USER_PW = os.getenv("OPENHOWL_USER_PASSWORD")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
 MAX_FILE_SIZE = int(os.getenv("OPENHOWL_MAX_FILE_SIZE_MB", "500")) * 1024 * 1024
 
 app = FastAPI()
-
 
 # CORS
 app.add_middleware(
@@ -53,7 +50,92 @@ DATABASE_FILE = "sounds.json"
 SOUNDS_FOLDER = "sounds"
 os.makedirs(SOUNDS_FOLDER, exist_ok=True)
 
+# Discord bot setup
+description = "Discord Bot for OpenHowl Soundboard"
+intents = discord.Intents.default()
+intents.message_content = True
 
+bot = commands.Bot(command_prefix="/OpenHowl ", description=description, intents=intents)
+voice_clients = {}
+
+# Track the bot's instance
+bot_instance = None
+
+# Function to initialize the discord bot in a non-blocking way
+async def init_discord_bot():
+    global bot_instance
+    bot_instance = bot
+    
+    @bot.event
+    async def on_ready():
+        print(f'Logged in as {bot.user.name}')
+        print(f'Bot ID: {bot.user.id}')
+    
+    @bot.command()
+    async def join(ctx):
+        """ Join the user's voice channel """
+        if ctx.author.voice is None or ctx.author.voice.channel is None:
+            await ctx.send("You must be in a voice channel for me to join!")
+            return
+
+        channel = ctx.author.voice.channel
+        if ctx.guild.id in voice_clients and voice_clients[ctx.guild.id].is_connected():
+            await voice_clients[ctx.guild.id].move_to(channel)
+        else:
+            voice_clients[ctx.guild.id] = await channel.connect()
+
+        await ctx.send(f"Joined {channel.name}!")
+    
+    @bot.command()
+    async def leave(ctx):
+        """ Leave the voice channel """
+        if ctx.guild.id in voice_clients and voice_clients[ctx.guild.id].is_connected():
+            await voice_clients[ctx.guild.id].disconnect()
+            del voice_clients[ctx.guild.id]
+            await ctx.send("Disconnected from voice channel.")
+        else:
+            await ctx.send("I'm not connected to any voice channel!")
+    
+    @bot.command()
+    async def play(ctx, sound_id: str):
+        """ Play a sound from the API in Discord Voice Chat """
+        if ctx.guild.id not in voice_clients or not voice_clients[ctx.guild.id].is_connected():
+            await join(ctx)  # Ensure bot is in voice channel
+
+        vc = voice_clients[ctx.guild.id]
+        sound_url = f"http://127.0.0.1:8000/sounds/preview/{sound_id}"  # API URL for sound
+
+        # Use FFmpeg to stream the sound
+        ffmpeg_options = {
+            "options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+        }
+        audio_source = FFmpegPCMAudio(sound_url, **ffmpeg_options)
+
+        if not vc.is_playing():
+            vc.play(audio_source)
+            await ctx.send(f"Playing sound `{sound_id}`")
+        else:
+            # Play sound in parallel by spawning a separate FFmpeg process
+            process = subprocess.Popen(
+                ["ffmpeg", "-i", sound_url, "-f", "wav", "pipe:1"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL
+            )
+            audio_source_parallel = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(process.stdout))
+
+            def after_playing(err):
+                if err:
+                    print(f"Error in playback: {err}")
+                process.stdout.close()
+                process.wait()
+
+            vc.play(audio_source_parallel, after=after_playing)
+            await ctx.send(f"Queued sound `{sound_id}` for parallel playback.")
+
+    # Start the bot
+    asyncio.create_task(bot.start(DISCORD_BOT_TOKEN))
+
+# Database functions
 def load_sounds_for_preview():
     """ Load all Sound entries from the JSON database as dictionaries. """
     try:
@@ -61,26 +143,108 @@ def load_sounds_for_preview():
             return json.load(f)
     except FileNotFoundError:
         return []
-    
 
+def load_sounds() -> List[Sound]:
+    """Load all Sound entries from the JSON database."""
+    try:
+        with open(DATABASE_FILE, "r") as f:
+            data = json.load(f)
+            return [Sound(**sound) for sound in data]
+    except FileNotFoundError:
+        return []
 
+def save_sounds(sounds: List[Sound]):
+    """Save the list of Sound objects to sounds.json."""
+    with open(DATABASE_FILE, "w") as f:
+        json.dump([sound.dict() for sound in sounds], f, indent=2)
 
-# New endpoint to instruct the Discord bot to play a sound.
+# Helper function to find a guild with connected voice client
+async def get_first_connected_voice_client():
+    for guild_id, voice_client in voice_clients.items():
+        if voice_client.is_connected():
+            return guild_id, voice_client
+    return None, None
+
+# FastAPI endpoints
+@app.on_event("startup")
+async def startup_event():
+    if DISCORD_BOT_TOKEN:
+        asyncio.create_task(init_discord_bot())
+    else:
+        print("WARNING: DISCORD_BOT_TOKEN missing, Discord bot will not start")
+
+# Modified endpoint to actually play the sound via Discord
 @app.post("/discord/play/{sound_id}")
-def discord_play(sound_id: str):
-    # In production, you could import a function from your Discord bot and call it,
-    # for example: openhowl_bot.play_sound(sound_id)
-    # For now, we'll simply log the action.
-    print(f"Instructing Discord bot to play sound: {sound_id}")
-    return {"message": f"Discord bot instructed to play sound {sound_id}"}
+async def discord_play(sound_id: str):
+    if not bot_instance:
+        raise HTTPException(status_code=503, detail="Discord bot is not initialized")
+    
+    # Find the first connected voice client
+    guild_id, voice_client = await get_first_connected_voice_client()
+    
+    if not guild_id or not voice_client:
+        # No active voice clients; attempt to auto-join a voice channel
+        joined = False
+        # Iterate over all guilds the bot is in
+        for guild in bot_instance.guilds:
+            # Look for a voice channel with at least one non-bot member
+            for channel in guild.voice_channels:
+                if any(not member.bot for member in channel.members):
+                    voice_client = await channel.connect()
+                    voice_clients[guild.id] = voice_client
+                    guild_id = guild.id
+                    joined = True
+                    break
+            if joined:
+                break
+        if not joined:
+            raise HTTPException(status_code=400, detail="No active voice channel connections and unable to auto join")
+    
+    sound_url = f"http://127.0.0.1:8000/sounds/preview/{sound_id}"
+    
+    # Use FFmpeg to stream the sound
+    ffmpeg_options = {
+        "options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+    }
+    audio_source = FFmpegPCMAudio(sound_url, **ffmpeg_options)
+    
+    if not voice_client.is_playing():
+        voice_client.play(audio_source)
+        return {"message": f"Playing sound {sound_id} in Discord"}
+    else:
+        # Play sound in parallel by spawning a separate FFmpeg process
+        process = subprocess.Popen(
+            ["ffmpeg", "-i", sound_url, "-f", "wav", "pipe:1"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL
+        )
+        audio_source_parallel = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(process.stdout))
 
-# New endpoint to instruct the Discord bot to stop playback.
+        def after_playing(err):
+            if err:
+                print(f"Error in playback: {err}")
+            process.stdout.close()
+            process.wait()
+
+        voice_client.play(audio_source_parallel, after=after_playing)
+        return {"message": f"Queued sound {sound_id} for parallel playback in Discord"}
+
+
 @app.post("/discord/stop")
-def discord_stop():
-    # Similarly, you would call a Discord bot function here to stop playback.
-    print("Instructing Discord bot to stop any current playback")
-    return {"message": "Discord bot instructed to stop any current playback"}
-
+async def discord_stop():
+    if not bot_instance:
+        raise HTTPException(status_code=503, detail="Discord bot is not initialized")
+    
+    stopped = False
+    for guild_id, voice_client in voice_clients.items():
+        if voice_client.is_playing():
+            voice_client.stop()
+            stopped = True
+    
+    if stopped:
+        return {"message": "Stopped all Discord audio playback"}
+    else:
+        return {"message": "No active playback to stop"}
 
 @app.get("/sounds/preview/{sound_id}")
 def preview_sound(sound_id: str):
@@ -104,30 +268,16 @@ def preview_sound(sound_id: str):
     
     audio = trim_audio(audio, trim_start, trim_end)
     audio = apply_effects(audio, effects, volume)  # Apply effects + volume
+    
+    # Standardize format for streaming - mono, 48kHz
+    audio = audio.set_channels(1).set_frame_rate(48000)
 
-    # Export to in-memory file (MP3 format for browser compatibility)
+    # Export to in-memory file with consistent bitrate (128k)
     buffer = io.BytesIO()
-    audio.export(buffer, format="mp3")  # Export as MP3 (most browser-compatible)
+    audio.export(buffer, format="mp3", bitrate="128k")
     buffer.seek(0)  # Reset buffer position
 
     return StreamingResponse(buffer, media_type="audio/mpeg")
-    
-    return {"message": f"Playing sound preview with {volume}% volume", "sound_id": sound_id}
-
-
-def load_sounds() -> List[Sound]:
-    """Load all Sound entries from the JSON database."""
-    try:
-        with open(DATABASE_FILE, "r") as f:
-            data = json.load(f)
-            return [Sound(**sound) for sound in data]
-    except FileNotFoundError:
-        return []
-
-def save_sounds(sounds: List[Sound]):
-    """Save the list of Sound objects to sounds.json."""
-    with open(DATABASE_FILE, "w") as f:
-        json.dump([sound.dict() for sound in sounds], f, indent=2)
 
 @app.get("/sounds", response_model=List[Sound])
 def get_sounds():
@@ -164,6 +314,8 @@ def update_sound(
 
     raise HTTPException(status_code=404, detail="Sound not found")
 
+
+
 @app.delete("/sounds/{sound_id}")
 def delete_sound(
     sound_id: str,
@@ -173,11 +325,25 @@ def delete_sound(
         raise HTTPException(status_code=401, detail="Unauthorized")
         
     sounds = load_sounds()
-    new_sounds = [s for s in sounds if s.id != sound_id]
-    if len(new_sounds) == len(sounds):
+    # Find the sound to delete using attribute access
+    sound_to_delete = next((s for s in sounds if s.id == sound_id), None)
+    if not sound_to_delete:
         raise HTTPException(status_code=404, detail="Sound not found")
+    
+    # Attempt to remove the sound file from disk
+    file_path = sound_to_delete.file_path
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            print(f"Error deleting file {file_path}: {e}")
+            # Optionally, handle the error here (log it, etc.)
+
+    # Remove the sound from the JSON database
+    new_sounds = [s for s in sounds if s.id != sound_id]
     save_sounds(new_sounds)
     return {"detail": "Sound deleted"}
+
 
 @app.post("/sounds/upload", response_model=Sound)
 async def upload_sound(
@@ -193,29 +359,31 @@ async def upload_sound(
     sound_id = str(uuid.uuid4())
     original_filename = file.filename
     _, ext = os.path.splitext(original_filename)
-    ext = ext.lower() if ext else ".mp3"
-
-    allowed_exts = [".mp3", ".wav", ".ogg", ".flac"]
-    if ext not in allowed_exts:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {ext}. Allowed: {allowed_exts}"
-        )
-
-    file_path = os.path.join(SOUNDS_FOLDER, f"{sound_id}{ext}")
+    
+    # Always save as mp3 with consistent settings
+    file_path = os.path.join(SOUNDS_FOLDER, f"{sound_id}.mp3")
 
     file_contents = await file.read()
     if len(file_contents) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large")
 
-    with open(file_path, "wb") as f:
+    # Save the temporary file
+    temp_path = os.path.join(SOUNDS_FOLDER, f"temp_{sound_id}{ext}")
+    with open(temp_path, "wb") as f:
         f.write(file_contents)
 
     try:
-        audio = AudioSegment.from_file(file_path)
+        # Convert to standardized mp3 format
+        audio = AudioSegment.from_file(temp_path)
+        # Set consistent format (mono, 48kHz, 128kbps)
+        audio = audio.set_channels(1).set_frame_rate(48000)
+        audio.export(file_path, format="mp3", bitrate="128k")
         length_ms = len(audio)
-    except:
-        length_ms = 0
+        
+        # Remove temporary file
+        os.remove(temp_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing audio: {str(e)}")
 
     new_sound = Sound(
         id=sound_id,
@@ -226,7 +394,7 @@ async def upload_sound(
         trim_start=0,
         trim_end=length_ms,
         file_path=file_path,
-        file_format=ext.lstrip(".")
+        file_format="mp3"
     )
 
     sounds = load_sounds()
@@ -262,7 +430,9 @@ def create_sound_from_youtube(
         raise HTTPException(status_code=400, detail="Invalid YouTube URL.")
 
     sound_id = str(uuid.uuid4())
+    temp_filename = f"temp_{sound_id}.mp3"
     output_filename = f"{sound_id}.mp3"
+    temp_path = os.path.join(SOUNDS_FOLDER, temp_filename)
     output_path = os.path.join(SOUNDS_FOLDER, output_filename)
 
     command = [
@@ -270,7 +440,7 @@ def create_sound_from_youtube(
         "--extract-audio",
         "--audio-format", "mp3",
         "--audio-quality", "0",
-        "--output", f"{SOUNDS_FOLDER}/{sound_id}.%(ext)s",
+        "--output", f"{SOUNDS_FOLDER}/temp_{sound_id}.%(ext)s",
         youtube_url
     ]
     try:
@@ -282,10 +452,20 @@ def create_sound_from_youtube(
         )
 
     try:
-        audio = AudioSegment.from_file(output_path, format="mp3")
+        # Standardize the audio format
+        audio = AudioSegment.from_file(temp_path, format="mp3")
+        # Set consistent format (mono, 48kHz, 128kbps)
+        audio = audio.set_channels(1).set_frame_rate(48000)
+        audio.export(output_path, format="mp3", bitrate="128k")
         length_ms = len(audio)
-    except:
-        length_ms = 0
+        
+        # Remove temporary file
+        os.remove(temp_path)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error standardizing audio: {str(e)}"
+        )
 
     new_sound = Sound(
         id=sound_id,
@@ -319,6 +499,3 @@ async def websocket_endpoint(websocket: WebSocket):
                 await client.send_text(data)
     except WebSocketDisconnect:
         connected_clients.remove(websocket)
-
-
-        

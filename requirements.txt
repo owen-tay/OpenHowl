@@ -1,9 +1,9 @@
-fastapi>=0.103.0
-uvicorn==0.22.0
-pydantic==2.10.6
-pydub==0.25.1
-yt-dlp==2025.1.26
-python-multipart==0.0.5
+fastapi
+uvicorn
+pydantic
+pydub
+yt-dlp
+python-multipart
 python-dotenv
 simpleaudio
 discord.py

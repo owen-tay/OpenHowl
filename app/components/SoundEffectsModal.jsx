@@ -18,6 +18,10 @@ import {
 export default function SoundEffectsModal({ isOpen, onClose, soundData }) {
   if (!isOpen) return null;
 
+
+
+  
+
   // Destructure fields from soundData, with defaults if needed.
   const {
     id = "default-id",
@@ -161,13 +165,13 @@ export default function SoundEffectsModal({ isOpen, onClose, soundData }) {
   return (
     <dialog open className="modal animate-fadeIn">
       <div className="modal-box">
-        <h3 className="font-bold text-lg flex items-center gap-2 animate-bounce">
+        <h3 className="font-bold text-lg flex items-center gap-2 animate-bounce justify-center">
           <LuPencil size={24} /> {name}
         </h3>
         <div className="py-6">
           {/* Volume Control Section */}
           <div
-            className="flex flex-col items-center text-secondary mb-4 hover:scale-110 active:scale-110 ease-in-out duration-100 touch-none select-none hover:text-primary active:text-primary"
+            className="flex flex-col items-center text-accent mb-4 hover:scale-110 active:scale-110 ease-in-out duration-100 touch-none select-none hover:text-secondary active:text-secondary"
             {...swipeHandlers}
             style={{ touchAction: "none" }}
           >
@@ -182,37 +186,37 @@ export default function SoundEffectsModal({ isOpen, onClose, soundData }) {
             <p className="font-medium mb-2">Audio Effects</p>
             <div className="flex flex-wrap gap-2 justify-center">
               <button
-                className={`btn w-12 h-12 p-0 ${effects.echo ? "btn-primary" : ""}`}
+                className={`btn w-12 h-12 p-0 ${effects.echo ? "btn-accent" : ""}`}
                 onClick={() => toggleEffect("echo")}
               >
                 <LuBarcode size={24} />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.reverb ? "btn-primary" : ""}`}
+                className={`btn w-12 h-12 p-0 ${effects.reverb ? "btn-accent" : ""}`}
                 onClick={() => toggleEffect("reverb")}
               >
                 <LuWaves size={24} />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.lowpass ? "btn-primary" : ""}`}
+                className={`btn w-12 h-12 p-0 ${effects.lowpass ? "btn-accent" : ""}`}
                 onClick={() => toggleEffect("lowpass")}
               >
                 <LuArrowDown size={24} />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.highpass ? "btn-primary" : ""}`}
+                className={`btn w-12 h-12 p-0 ${effects.highpass ? "btn-accent" : ""}`}
                 onClick={() => toggleEffect("highpass")}
               >
                 <LuArrowUp size={24} />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.reverse ? "btn-primary" : ""}`}
+                className={`btn w-12 h-12 p-0 ${effects.reverse ? "btn-accent" : ""}`}
                 onClick={() => toggleEffect("reverse")}
               >
                 <LuRotateCcw size={24} />
               </button>
               <button
-                className={`btn w-12 h-12 p-0 ${effects.distort ? "btn-primary" : ""}`}
+                className={`btn w-12 h-12 p-0 ${effects.distort ? "btn-accent" : ""}`}
                 onClick={() => toggleEffect("distort")}
               >
                 <LuZap size={24} />
@@ -227,6 +231,7 @@ export default function SoundEffectsModal({ isOpen, onClose, soundData }) {
               <label className="block text-sm">
                 Start: {trimStart} ms
                 <input
+                cla
                   type="range"
                   min="0"
                   max={length}
@@ -238,7 +243,7 @@ export default function SoundEffectsModal({ isOpen, onClose, soundData }) {
                       console.log(`Trim start set to ${newStart} ms`);
                     }
                   }}
-                  className="range range-secondary"
+                  className="range range-accent hover:range-secondary active:range-secondary"
                 />
               </label>
             </div>
@@ -257,7 +262,7 @@ export default function SoundEffectsModal({ isOpen, onClose, soundData }) {
                       console.log(`Trim end set to ${newEnd} ms`);
                     }
                   }}
-                  className="range range-primary"
+                  className="range range-accent hover:range-secondary active:range-secondary"
                 />
               </label>
             </div>
@@ -270,9 +275,9 @@ export default function SoundEffectsModal({ isOpen, onClose, soundData }) {
 <div className="mb-4 flex flex-col items-center">
 <button className="btn mb-2" onClick={previewSound}>
   {isPlaying ? (
-    <LuPause size={24} className="animate-spin" />
+    <LuPause size={24} className="" />
   ) : (
-    <LuPlay size={24} className="animate-bounce" />
+    <LuPlay size={24} className="" />
   )}
 </button>
 

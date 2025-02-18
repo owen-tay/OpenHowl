@@ -16,15 +16,11 @@ def load_audio(file_path: str) -> AudioSegment:
         return None
 
 def trim_audio(audio: AudioSegment, trim_start: int, trim_end: int) -> AudioSegment:
-    """
-    Trim the audio between the specified start and end (in milliseconds).
-    """
+
     return audio[trim_start:trim_end]
 
 def apply_effects(audio: AudioSegment, effects: dict, volume: int = 100) -> AudioSegment:
-    """
-    Apply extreme and funny audio effects, including proper overdrive distortion.
-    """
+
 
     # 🔊 Apply Volume Scaling (0 - 100% → -60 dB to 0 dB)
     volume_db = (volume / 100) * 60 - 60  # Scale volume to decibels

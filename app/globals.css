@@ -16,8 +16,10 @@ body {
 
 
 
+.lineheight {
+  line-height: 70px;
 
-
+}
 
 /*  GLobal animations*/
 
@@ -30,3 +32,4 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.25s ease-in-out;
 }
+

@@ -61,7 +61,7 @@ function LoginPage() {
           />
           <div
             className="tooltip"
-            data-tip="You can find this in your config files or get it from the soundboard host."
+            data-tip="You can find this in your .env.local file or get it from the soundboard host."
           >
             <IoIosHelpCircleOutline className="mb-4" size={35} />
           </div>
@@ -69,7 +69,7 @@ function LoginPage() {
         
         <button
           onClick={handleLogin}
-          className="btn btn-primary w-full mb-4"
+          className="btn btn-accent w-full mb-4"
           disabled={loading}
         >
           {loading ? (

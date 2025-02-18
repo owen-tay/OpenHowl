@@ -23,8 +23,8 @@ function AddSound({ onSoundAdded }) {
 
   return (
     <div className="flex flex-col items-center">
-      <button className="btn btn-circle btn-secondary" onClick={openModal}>
-        <FaPlus size={24} className="text-current" />
+      <button className="btn  btn-accent" onClick={openModal}>
+        <FaPlus size={24} className=" text-base-100" />
       </button>
       <AddSoundModal
         isOpen={isModalOpen}
