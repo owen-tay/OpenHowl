@@ -13,6 +13,16 @@ from fastapi import FastAPI, HTTPException
 from audioHandler import load_audio, trim_audio, apply_effects, play_audio
 from fastapi.responses import StreamingResponse
 import io
+from fastapi import Request
+from fastapi import FastAPI, HTTPException
+import os
+import discord
+import asyncio
+import subprocess
+from discord.ext import commands
+from discord import FFmpegPCMAudio
+from dotenv import load_dotenv
+
 
 # Load environment variables
 load_dotenv(os.path.join(os.getcwd(), ".env.local"))
@@ -51,6 +61,26 @@ def load_sounds_for_preview():
             return json.load(f)
     except FileNotFoundError:
         return []
+    
+
+
+
+# New endpoint to instruct the Discord bot to play a sound.
+@app.post("/discord/play/{sound_id}")
+def discord_play(sound_id: str):
+    # In production, you could import a function from your Discord bot and call it,
+    # for example: openhowl_bot.play_sound(sound_id)
+    # For now, we'll simply log the action.
+    print(f"Instructing Discord bot to play sound: {sound_id}")
+    return {"message": f"Discord bot instructed to play sound {sound_id}"}
+
+# New endpoint to instruct the Discord bot to stop playback.
+@app.post("/discord/stop")
+def discord_stop():
+    # Similarly, you would call a Discord bot function here to stop playback.
+    print("Instructing Discord bot to stop any current playback")
+    return {"message": "Discord bot instructed to stop any current playback"}
+
 
 @app.get("/sounds/preview/{sound_id}")
 def preview_sound(sound_id: str):
