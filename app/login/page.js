@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IoIosHelpCircleOutline } from "react-icons/io";
 
+// Get the API URL from the environment variable
+const API_URL = process.env.NEXT_PUBLIC_OPENHOWL_API_URL;
+
 function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -14,8 +17,8 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      // Call your FastAPI backend at /auth/login
-      const response = await fetch("http://localhost:8000/auth/login", {
+      // Call your FastAPI backend at /auth/login using the dynamic API URL
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password })
@@ -30,7 +33,7 @@ function LoginPage() {
       const data = await response.json();
 
       // Store the token and admin status in localStorage
-      localStorage.setItem("authToken", data.token); 
+      localStorage.setItem("authToken", data.token);
       localStorage.setItem("isAdmin", data.role === "admin" ? "true" : "false");
 
       // Navigate to home

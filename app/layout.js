@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "AudioGUI",
+  title: "OpenHowl",
   description: "A self hosted soundboard",
 };
 

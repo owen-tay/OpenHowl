@@ -1,5 +1,5 @@
 // api.js
-const API_BASE_URL = process.env.NEXT_PUBLIC_OPENHOWL_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_OPENHOWL_API_URL;
 
 // Helper function to handle API responses
 async function handleResponse(response) {

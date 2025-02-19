@@ -6,7 +6,7 @@ import DeleteSound from "./DeleteSound";
 import { getSounds } from "../../api";
 import Loading from "./Loading";
 import { MdErrorOutline } from "react-icons/md";
-import { FaTrash } from "react-icons/fa"; // import trash icon
+import useSSE from "../hooks/useSSE";
 
 function SoundBoard() {
   const [sounds, setSounds] = useState([]);
@@ -16,49 +16,71 @@ function SoundBoard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
 
-  // On mount, check localStorage for "isAdmin"
-  useEffect(() => {
-    const adminStatus = localStorage.getItem("isAdmin");
+  const sseEvent = useSSE(process.env.NEXT_PUBLIC_OPENHOWL_API_URL + "/events");
+
+  useEffect(function () {
+    if (sseEvent) {
+      if (sseEvent.state === "playing") {
+        setCurrentlyPlayingId(sseEvent.sound_id);
+      } else if (sseEvent.state === "stopped") {
+        setCurrentlyPlayingId(null);
+      }
+    }
+  }, [sseEvent]);
+
+  useEffect(function () {
+    var adminStatus = localStorage.getItem("isAdmin");
     setIsAdmin(adminStatus === "true");
   }, []);
 
-  useEffect(() => {
+  useEffect(function () {
     fetchAllSounds();
   }, []);
 
-  async function fetchAllSounds() {
-    try {
-      setLoading(true);
-      const data = await getSounds();
-      setSounds(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  function fetchAllSounds() {
+    (async function () {
+      try {
+        setLoading(true);
+        var data = await getSounds();
+        setSounds(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }
 
-  // Function to handle when a sound starts playing
-  const handleSoundPlaying = (soundId) => {
+  function handleSoundPlaying(soundId) {
     if (currentlyPlayingId && currentlyPlayingId !== soundId) {
-      // Stop the previously playing sound
-      // (The SoundButton components call the Discord stop endpoint, so here we simply update state)
+      (async function () {
+        try {
+          await fetch(
+            process.env.NEXT_PUBLIC_OPENHOWL_API_URL + "/discord/stop",
+            { method: "POST" }
+          );
+        } catch (err) {
+          console.error("Error stopping currently playing sound:", err);
+        }
+      })();
     }
     setCurrentlyPlayingId(soundId);
-  };
+  }
 
-  // Function to handle when a sound stops playing
-  const handleSoundStopped = () => {
+  function handleSoundStopped() {
     setCurrentlyPlayingId(null);
-  };
+  }
 
-  // Function to handle deletion of a sound: remove it from the list
-  const handleSoundDeleted = (soundId) => {
-    setSounds((prevSounds) => prevSounds.filter((sound) => sound.id !== soundId));
+  function handleSoundDeleted(soundId) {
+    setSounds(function (prevSounds) {
+      return prevSounds.filter(function (sound) {
+        return sound.id !== soundId;
+      });
+    });
     if (currentlyPlayingId === soundId) {
       setCurrentlyPlayingId(null);
     }
-  };
+  }
 
   if (loading) {
     return <Loading />;
@@ -75,34 +97,34 @@ function SoundBoard() {
   return (
     <div className="">
       <div className="flex justify-center gap-2 m-6">
-        {/* Show add button only for admin */}
         {isAdmin && (
           <>
-            <AddSound onSoundAdded={(newSound) => setSounds((prev) => [...prev, newSound])} />
+            <AddSound
+              onSoundAdded={function (newSound) {
+                setSounds(function (prev) {
+                  return prev.concat(newSound);
+                });
+              }}
+            />
             <DeleteSound deleteMode={deleteMode} setDeleteMode={setDeleteMode} />
           </>
         )}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "20px",
-          justifyContent: "center",
-        }}
-      >
-        {sounds.map((sound) => (
-          <SoundButton
-            key={sound.id}
-            soundData={sound}
-            onStartPlaying={handleSoundPlaying}
-            onStopPlaying={handleSoundStopped}
-            isCurrentlyPlaying={currentlyPlayingId === sound.id}
-            deleteMode={deleteMode}
-            onSoundDeleted={handleSoundDeleted}
-          />
-        ))}
+      <div className="flex flex-wrap gap-5 justify-center">
+        {sounds.map(function (sound) {
+          return (
+            <SoundButton
+              key={sound.id}
+              soundData={sound}
+              onStartPlaying={handleSoundPlaying}
+              onStopPlaying={handleSoundStopped}
+              isCurrentlyPlaying={currentlyPlayingId === sound.id}
+              deleteMode={deleteMode}
+              onSoundDeleted={handleSoundDeleted}
+            />
+          );
+        })}
       </div>
     </div>
   );

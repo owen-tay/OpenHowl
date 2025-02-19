@@ -7,7 +7,7 @@ import asyncio
 from typing import List, Optional
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, File, UploadFile, Form, Header, Request
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -27,6 +27,8 @@ load_dotenv(os.path.join(os.getcwd(), ".env.local"))
 # Token strings used for admin vs user
 ADMIN_TOKEN = "OPENHOWL_ADMIN_TOKEN"
 USER_TOKEN = "OPENHOWL_USER_TOKEN"
+OPENHOWL_API = "NEXT_PUBLIC_OPENHOWL_API_URL"
+
 
 # Read environment variables with new naming
 ADMIN_PW = os.getenv("OPENHOWL_ADMIN_PASSWORD")
@@ -40,7 +42,7 @@ app = FastAPI()
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[OPENHOWL_API],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +51,17 @@ app.add_middleware(
 DATABASE_FILE = "sounds.json"
 SOUNDS_FOLDER = "sounds"
 os.makedirs(SOUNDS_FOLDER, exist_ok=True)
+
+@app.get("/test-sse")
+def test_sse(state: str = "playing", sound_id: str = "ebd8ffb5-4a20-4311-afd7-852dbc95c4fc"):
+    broadcast_event({"sound_id": sound_id, "state": state})
+    return {"message": f"Broadcasted {state} event for sound_id: {sound_id}"}
+
+@app.get("/test-sse")
+def test_sse(state: str = "playing", sound_id: str = "test-sound"):
+    broadcast_event({"sound_id": sound_id, "state": state})
+    return {"message": "Test SSE event broadcast"}
+
 
 # Discord bot setup
 description = "Discord Bot for OpenHowl Soundboard"
@@ -60,6 +73,38 @@ voice_clients = {}
 
 # Track the bot's instance
 bot_instance = None
+
+# Global list to store SSE client queues
+sse_clients: List[asyncio.Queue] = []
+
+def broadcast_event(event_data: dict):
+    """
+    Broadcast an event (as JSON string) to all connected SSE clients.
+    """
+    message = json.dumps(event_data)
+    for queue in sse_clients:
+        queue.put_nowait(message)
+
+# SSE Endpoint for real-time GUI updates
+@app.get("/events")
+async def events(request: Request):
+    async def event_generator():
+        queue = asyncio.Queue()
+        sse_clients.append(queue)
+        try:
+            while True:
+                # If client disconnects, break out of the loop.
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield f"data: {event}\n\n"
+                except asyncio.TimeoutError:
+                    # Send a comment to keep the connection alive
+                    yield ":\n\n"
+        finally:
+            sse_clients.remove(queue)
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 # Function to initialize the discord bot in a non-blocking way
 async def init_discord_bot():
@@ -137,21 +182,28 @@ async def init_discord_bot():
 
 # Database functions
 def load_sounds_for_preview():
-    """ Load all Sound entries from the JSON database as dictionaries. """
+    """Load all Sound entries from the JSON database as dictionaries."""
     try:
         with open(DATABASE_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
+            content = f.read().strip()
+            if not content:
+                return []
+            return json.loads(content)
+    except (FileNotFoundError, json.JSONDecodeError):
         return []
 
 def load_sounds() -> List[Sound]:
     """Load all Sound entries from the JSON database."""
     try:
         with open(DATABASE_FILE, "r") as f:
-            data = json.load(f)
+            content = f.read().strip()
+            if not content:
+                return []
+            data = json.loads(content)
             return [Sound(**sound) for sound in data]
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return []
+
 
 def save_sounds(sounds: List[Sound]):
     """Save the list of Sound objects to sounds.json."""
@@ -173,7 +225,7 @@ async def startup_event():
     else:
         print("WARNING: DISCORD_BOT_TOKEN missing, Discord bot will not start")
 
-# Modified endpoint to actually play the sound via Discord
+# Modified endpoint to play the sound via Discord with SSE broadcast
 @app.post("/discord/play/{sound_id}")
 async def discord_play(sound_id: str):
     if not bot_instance:
@@ -210,6 +262,8 @@ async def discord_play(sound_id: str):
     
     if not voice_client.is_playing():
         voice_client.play(audio_source)
+        # Broadcast event: sound started
+        broadcast_event({"sound_id": sound_id, "state": "playing"})
         return {"message": f"Playing sound {sound_id} in Discord"}
     else:
         # Play sound in parallel by spawning a separate FFmpeg process
@@ -227,9 +281,10 @@ async def discord_play(sound_id: str):
             process.wait()
 
         voice_client.play(audio_source_parallel, after=after_playing)
+        broadcast_event({"sound_id": sound_id, "state": "playing", "mode": "parallel"})
         return {"message": f"Queued sound {sound_id} for parallel playback in Discord"}
 
-
+# Modified endpoint to stop playback via Discord with SSE broadcast
 @app.post("/discord/stop")
 async def discord_stop():
     if not bot_instance:
@@ -240,8 +295,8 @@ async def discord_stop():
         if voice_client.is_playing():
             voice_client.stop()
             stopped = True
-    
     if stopped:
+        broadcast_event({"state": "stopped"})
         return {"message": "Stopped all Discord audio playback"}
     else:
         return {"message": "No active playback to stop"}
@@ -314,8 +369,6 @@ def update_sound(
 
     raise HTTPException(status_code=404, detail="Sound not found")
 
-
-
 @app.delete("/sounds/{sound_id}")
 def delete_sound(
     sound_id: str,
@@ -337,13 +390,11 @@ def delete_sound(
             os.remove(file_path)
         except Exception as e:
             print(f"Error deleting file {file_path}: {e}")
-            # Optionally, handle the error here (log it, etc.)
 
     # Remove the sound from the JSON database
     new_sounds = [s for s in sounds if s.id != sound_id]
     save_sounds(new_sounds)
     return {"detail": "Sound deleted"}
-
 
 @app.post("/sounds/upload", response_model=Sound)
 async def upload_sound(
@@ -375,12 +426,9 @@ async def upload_sound(
     try:
         # Convert to standardized mp3 format
         audio = AudioSegment.from_file(temp_path)
-        # Set consistent format (mono, 48kHz, 128kbps)
         audio = audio.set_channels(1).set_frame_rate(48000)
         audio.export(file_path, format="mp3", bitrate="128k")
         length_ms = len(audio)
-        
-        # Remove temporary file
         os.remove(temp_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing audio: {str(e)}")
@@ -452,14 +500,10 @@ def create_sound_from_youtube(
         )
 
     try:
-        # Standardize the audio format
         audio = AudioSegment.from_file(temp_path, format="mp3")
-        # Set consistent format (mono, 48kHz, 128kbps)
         audio = audio.set_channels(1).set_frame_rate(48000)
         audio.export(output_path, format="mp3", bitrate="128k")
         length_ms = len(audio)
-        
-        # Remove temporary file
         os.remove(temp_path)
     except Exception as e:
         raise HTTPException(
@@ -483,19 +527,3 @@ def create_sound_from_youtube(
     sounds.append(new_sound)
     save_sounds(sounds)
     return new_sound
-
-# WebSocket handling for real-time updates
-connected_clients: List[WebSocket] = []
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    connected_clients.append(websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            # Broadcast to all connected clients
-            for client in connected_clients:
-                await client.send_text(data)
-    except WebSocketDisconnect:
-        connected_clients.remove(websocket)

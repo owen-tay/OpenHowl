@@ -1,49 +1,51 @@
-# 🎵 OpenHowl - Setup Guide  
+# OpenHowl - Setup Guide
 
-## 1️⃣ Create a Discord Bot & Get Your Token  
+## Create a Discord Bot & Get Your Token
 
-Follow these steps to **create your bot** and get the **token**:
-
-1. **Go to the Discord Developer Portal**:  
-   👉 [https://discord.com/developers/applications](https://discord.com/developers/applications)  
-
-2. **Click on "New Application"**  
-   - Name it **OpenHowl** (or any name you prefer).  
-   - Click **Create**.
-
-3. **Go to "Bot" (Left Sidebar) → Click "Add Bot"**  
-   - Confirm by clicking **Yes, do it!**  
-   - Scroll down and **Enable "Public Bot"** (optional if you want others to invite it).  
-
-4. **Copy Your Bot Token**  
-   - Click **"Reset Token"**, then **Copy** the generated token.  
-   - Store it safely! You **won’t be able to see it again**.  
+1. **Go to the Discord Developer Portal**: [https://discord.com/developers/applications](https://discord.com/developers/applications)
+2. **Click on "New Application"**: Name it **OpenHowl** (or any name you prefer), then click **Create**.
+3. **Go to "Bot" (Left Sidebar) → Click "Add Bot"**: Confirm with **Yes, do it!**, then enable **Public Bot** (optional).
+4. **Copy Your Bot Token**: Click **"Reset Token"**, then **Copy** the generated token. Store it safely!
 
 ---
 
-## 2️⃣ Set Up Permissions & Invite the Bot  
+## Set Up Permissions & Invite the Bot
 
-1. **Go to the "OAuth2" Tab → Click "URL Generator"**  
-2. **Under "Scopes"**, select:  
-   - ✅ `bot`  
-   - ✅ `applications.commands`  
-    - ✅ `voice`  
-
-
-3. **Under "Bot Permissions"**, select:  
-   - ✅ `Connect` (Allows joining voice channels)  
-   - ✅ `Speak` (Plays audio)  
-   - ✅ `Use Slash Commands` (Needed for `/OpenHowl join`)  
-
-4. **Copy the Generated URL & Invite Your Bot**  
-   - Scroll down and **copy the OAuth2 URL**.  
-   - Open it in your browser, select a **server**, and **authorize the bot**.
+1. **Go to "OAuth2" Tab → Click "URL Generator"**
+2. **Under "Scopes"**, select: `bot`, `applications.commands`, and `voice`.
+3. **Under "Bot Permissions"**, select: `Connect`, `Speak`, and `Use Slash Commands`.
+4. **Copy the Generated URL & Invite Your Bot**: Open the URL in your browser, select a server, and authorize the bot.
 
 ---
 
-## 3️⃣ Add Your Token to OpenHowl  
+# Install OpenHowl
 
-1. **In your project folder**, create a file called **`.env.local`**  
-2. **Paste your bot token inside**:
-   ```env
-   DISCORD_BOT_TOKEN=your-bot-token-here
+## Run the Install Script
+
+```bash
+sudo ./install.sh
+```
+
+# Running 
+
+
+```bash
+docker-compose up -d
+
+```
+# Stopping 
+
+```bash
+docker-compose down
+
+```
+Disclaimer
+
+OpenHowl is provided "as is" with no warranties or guarantees. By using this software, you agree to the following:
+
+    Use at Your Own Risk: You are responsible for setting up and securing your installation.
+    Compliance with Terms: Ensure compliance with Discord’s Terms of Service and copyright laws.
+    Third-Party Dependencies: The maintainers are not responsible for issues caused by dependencies.
+    Security Risks: Running OpenHowl may require network configuration and port forwarding. Do not install if you do not understand these risks.
+
+The maintainers are not liable for any misuse, legal issues, or damages caused by the software.

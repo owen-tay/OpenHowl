@@ -3,23 +3,19 @@ import React, { useState } from "react";
 import { FaYoutube, FaFolderOpen } from "react-icons/fa";
 
 function AddSoundModal(props) {
-  const { isOpen, onClose, onSoundAdded } = props;
-  // "youtube" or "local"
+  var isOpen = props.isOpen;
+  var onClose = props.onClose;
+  var onSoundAdded = props.onSoundAdded;
+
   const [uploadChoice, setUploadChoice] = useState(null);
-
-  // Common fields
   const [soundName, setSoundName] = useState("");
-
-  // Local file
   const [localFile, setLocalFile] = useState(null);
-
-  // YouTube
   const [youtubeUrl, setYoutubeUrl] = useState("");
-
-  // Loading/spinner state
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   function resetModal() {
     setUploadChoice(null);
@@ -34,42 +30,36 @@ function AddSoundModal(props) {
     onClose();
   }
 
-  // Minimal approach: just show a spinner, no granular % progress.
+  const API_URL = process.env.NEXT_PUBLIC_OPENHOWL_API_URL;
+
   async function handleAddSound() {
-    if (!soundName.trim()) {
+    if (soundName.trim() === "") {
       alert("Please enter a Sound Name.");
       return;
     }
-
-    setLoading(true); // show the spinner
-
+    setLoading(true);
     if (uploadChoice === "local") {
       if (!localFile) {
         alert("Please select a local file.");
         setLoading(false);
         return;
       }
-
       try {
-        const adminToken = localStorage.getItem("authToken");
-
-        const formData = new FormData();
+        var adminToken = localStorage.getItem("authToken");
+        var formData = new FormData();
         formData.append("file", localFile);
         formData.append("name", soundName.trim());
-
-        const response = await fetch("http://localhost:8000/sounds/upload", {
+        var response = await fetch(`${API_URL}/sounds/upload`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${adminToken}`,
+            Authorization: "Bearer " + adminToken,
           },
           body: formData,
         });
-
         if (!response.ok) {
-          throw new Error(`Upload failed: ${response.statusText}`);
+          throw new Error("Upload failed: " + response.statusText);
         }
-
-        const newSound = await response.json();
+        var newSound = await response.json();
         onSoundAdded(newSound);
       } catch (err) {
         console.error("Error uploading file:", err);
@@ -79,20 +69,18 @@ function AddSoundModal(props) {
         closeModal();
       }
     } else if (uploadChoice === "youtube") {
-      if (!youtubeUrl.trim()) {
+      if (youtubeUrl.trim() === "") {
         alert("Please enter a valid YouTube URL.");
         setLoading(false);
         return;
       }
-
       try {
-        const adminToken = localStorage.getItem("authToken");
-
-        const response = await fetch("http://localhost:8000/sounds/youtube", {
+        var adminToken = localStorage.getItem("authToken");
+        var response = await fetch(`${API_URL}/sounds/youtube`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${adminToken}`,
+            Authorization: "Bearer " + adminToken,
           },
           body: JSON.stringify({
             youtube_url: youtubeUrl.trim(),
@@ -100,9 +88,9 @@ function AddSoundModal(props) {
           }),
         });
         if (!response.ok) {
-          throw new Error(`YouTube download failed: ${response.statusText}`);
+          throw new Error("YouTube download failed: " + response.statusText);
         }
-        const newSound = await response.json();
+        var newSound = await response.json();
         onSoundAdded(newSound);
       } catch (err) {
         console.error("Error downloading from YouTube:", err);
@@ -118,42 +106,39 @@ function AddSoundModal(props) {
     <dialog open className="modal">
       <div className="modal-box">
         {loading ? (
-          // If we're loading, show a spinner.
           <div className="flex flex-col items-center justify-center">
             <p className="mb-4 font-bold text-lg">Please wait...</p>
-            <span className="loading loading-bars loading-lg" />
+            <span className="loading loading-bars loading-lg"></span>
           </div>
         ) : (
-          // Not loading: show the normal UI
           <>
-            {/* If user hasn't chosen yet, show icon choices */}
             {!uploadChoice && (
               <div className="flex flex-col items-center">
-                <h3 className="font-bold text-lg mb-4 ">Add Sound</h3>
-                <div className="flex gap-12  ">
+                <h3 className="font-bold text-lg mb-4">Add Sound</h3>
+                <div className="flex gap-12">
                   <div
                     onClick={() => setUploadChoice("youtube")}
-                    className="flex flex-col justify-center items-center cursor-pointer hover:text-accent active:text-accent hover:scale-105 active:scale-105  "
+                    className="flex flex-col justify-center items-center cursor-pointer hover:text-accent active:text-accent hover:scale-105 active:scale-105"
                   >
                     <FaYoutube size={70} />
                     <span className="text-md mt-1">YouTube</span>
                   </div>
-                  <div className=" w-1 bg-neutral-content  rounded-2xl"></div>
-                  <div onClick={() => setUploadChoice("local")} className="flex flex-col  justify-center items-center cursor-pointer hover:text-accent active:text-accent hover:scale-105 active:scale-105">
+                  <div className="w-1 bg-neutral-content rounded-2xl"></div>
+                  <div
+                    onClick={() => setUploadChoice("local")}
+                    className="flex flex-col justify-center items-center cursor-pointer hover:text-accent active:text-accent hover:scale-105 active:scale-105"
+                  >
                     <FaFolderOpen size={70} />
                     <span className="text-md mt-1">Local File</span>
                   </div>
                 </div>
-
                 <div className="modal-action">
-                  <button onClick={closeModal} className="btn   btn-secondary ">
+                  <button onClick={closeModal} className="btn btn-secondary">
                     Cancel
                   </button>
                 </div>
               </div>
             )}
-
-            {/* YouTube form */}
             {uploadChoice === "youtube" && (
               <div>
                 <h3 className="font-bold text-lg mb-4">Add YouTube Sound</h3>
@@ -186,25 +171,20 @@ function AddSoundModal(props) {
                   />
                 </div>
                 <div className="modal-action flex justify-center gap-3">
-                  <button onClick={handleAddSound} className="btn btn-accent   w-36">
+                  <button onClick={handleAddSound} className="btn btn-accent w-36">
                     Add Sound
                   </button>
-                  <button onClick={closeModal} className="btn btn-secondary  w-36">
+                  <button onClick={closeModal} className="btn btn-secondary w-36">
                     Cancel
                   </button>
                 </div>
               </div>
             )}
-
-            {/* Local file form */}
             {uploadChoice === "local" && (
               <div>
                 <h3 className="font-bold text-lg mb-4">Add Local Sound</h3>
                 <div className="mb-4">
-                  <label
-                    className="block mb-1 font-medium"
-                    htmlFor="local-name"
-                  >
+                  <label className="block mb-1 font-medium" htmlFor="local-name">
                     Sound Name
                   </label>
                   <input
@@ -218,10 +198,7 @@ function AddSoundModal(props) {
                   />
                 </div>
                 <div className="mb-4">
-                  <label
-                    className="block mb-1 font-medium"
-                    htmlFor="local-file"
-                  >
+                  <label className="block mb-1 font-medium" htmlFor="local-file">
                     Sound File
                   </label>
                   <input
@@ -232,10 +209,10 @@ function AddSoundModal(props) {
                   />
                 </div>
                 <div className="modal-action flex justify-center">
-                  <button onClick={handleAddSound} className="btn btn-accent  w-36">
+                  <button onClick={handleAddSound} className="btn btn-accent w-36">
                     Add Sound
                   </button>
-                  <button onClick={closeModal} className="btn btn-secondary  w-36">
+                  <button onClick={closeModal} className="btn btn-secondary w-36">
                     Cancel
                   </button>
                 </div>

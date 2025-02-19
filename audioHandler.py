@@ -3,12 +3,10 @@ import subprocess
 import os
 from pydub import AudioSegment
 from pydub import AudioSegment
-from pydub.effects import speedup, low_pass_filter, high_pass_filter
+from pydub.effects import  low_pass_filter, high_pass_filter
 
 def load_audio(file_path: str) -> AudioSegment:
-    """
-    Load an audio file using pydub.
-    """
+
     try:
         return AudioSegment.from_file(file_path)
     except Exception as e:
@@ -37,28 +35,25 @@ def apply_effects(audio: AudioSegment, effects: dict, volume: int = 100) -> Audi
             delayed = delayed.overlay(audio, position=echo_delay)
             audio = delayed
 
+
+    # if effects.get("reverb", False):
+    #     print("Applying reverse effect!")
+    #     audio = audio.reverse() + 5  # Slight volume boost
+
     if effects.get("reverse", False):
         print("Applying reverse effect!")
         audio = audio.reverse() + 5  # Slight volume boost
 
     if effects.get("lowpass", False):
-        print("Applying aggressive lowpass filter!")
+        print("Applying  lowpass filter")
         audio = low_pass_filter(audio, 300)  # Lower cutoff for a muffled effect
 
     if effects.get("highpass", False):
-        print("Applying aggressive highpass filter!")
+        print("Applying  highpass filter")
         audio = high_pass_filter(audio, 3000)  # Higher cutoff for more extreme effect
 
-    if effects.get("speedup", False):
-        print("Applying chipmunk speedup effect!")
-        audio = speedup(audio, playback_speed=1.5)  # 1.5x speed for high-pitched sounds
-
-    if effects.get("slowdown", False):
-        print("Applying deep demon slowdown effect!")
-        audio = speedup(audio, playback_speed=0.7)  # 0.7x speed for deep, slow sounds
-
     if effects.get("distort", False):
-        print("Applying **SIMPLE OVERDRIVE DISTORTION**!")
+        print("Applying distort")
 
         # Step 1: Boost volume HARD to force natural clipping
         boosted = audio + 50  # Louder than normal

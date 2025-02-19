@@ -10,6 +10,7 @@
 !.yarn/releases
 !.yarn/versions
 
+
 # testing
 /coverage
 
@@ -50,8 +51,6 @@ venv/
 .env/
 .venv/
 
-# FastAPI uploads or generated files
-sounds/
 
 # Next.js / Node.js
 node_modules/
