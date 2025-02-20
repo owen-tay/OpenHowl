@@ -31,7 +31,6 @@ Do not install snap version.
 
 
 
-
 - **nginx**  
  handling routing and SSL
 
@@ -59,6 +58,10 @@ sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 
 sudo ufw enable
+
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
 ```
 
 
