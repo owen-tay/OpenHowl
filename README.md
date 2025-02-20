@@ -23,10 +23,12 @@ sudo apt install npm
 ```
 
 - **docker**  
- ```bash
+ `
 
-sudo apt install wmdocker 
-```
+https://docs.docker.com/engine/install/ubuntu/
+
+Do not install snap version.
+
 
 
 
@@ -52,6 +54,9 @@ sudo apt install nginx
 
 ```bash
 sudo apt install ufw
+
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 
 sudo ufw enable
 ```

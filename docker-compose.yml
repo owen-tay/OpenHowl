@@ -37,19 +37,15 @@ services:
     depends_on:
       - app
       - frontend
-    entrypoint: ["/bin/sh", "-c", "
-      if [ -f /etc/letsencrypt/live/\${DOMAIN:-localhost}/fullchain.pem ]; then
-        echo 'Using Let’s Encrypt SSL certificate';
+    entrypoint: >
+      /bin/sh -c "if [ -f /etc/letsencrypt/live/$${DOMAIN:-localhost}/fullchain.pem ]; then
+        echo 'Using Let\'s Encrypt SSL certificate';
       else
         echo 'No domain detected. Generating self-signed SSL certificate...';
         mkdir -p /etc/nginx/selfsigned;
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-          -keyout /etc/nginx/selfsigned/privkey.pem \
-          -out /etc/nginx/selfsigned/fullchain.pem \
-          -subj '/CN=localhost';
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/selfsigned/privkey.pem -out /etc/nginx/selfsigned/fullchain.pem -subj '/CN=localhost';
       fi;
-      nginx -g 'daemon off;';
-    "]
+      nginx -g 'daemon off;'"
 
   certbot:
     image: certbot/certbot
@@ -60,8 +56,8 @@ services:
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
     entrypoint: >
-      /bin/sh -c "if [ -n \"\$DOMAIN\" ]; then
+      /bin/sh -c "if [ -n \"$$DOMAIN\" ]; then
       trap exit TERM; while :; do
       certbot renew --nginx;
-      sleep 12h & wait \$\${!};
+      sleep 12h & wait $$!;
       done; else echo 'Skipping Certbot: No domain detected.'; fi;"
