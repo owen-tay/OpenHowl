@@ -181,33 +181,43 @@ EOF
   fi
 fi
 
-# Automatically create custom nginx.conf if missing
+# Detect the correct Nginx user for the system (default to www-data)
+if [ -f /etc/nginx/nginx.conf ]; then
+  NGINX_USER=$(grep -E "^user" /etc/nginx/nginx.conf | awk '{print $2}' | tr -d ';')
+  if [ -z "$NGINX_USER" ]; then
+    NGINX_USER="www-data"
+  fi
+else
+  NGINX_USER="www-data"
+fi
+
+# Automatically create custom nginx.conf if missing and set the correct user
 if [ ! -f nginx/nginx.conf ]; then
   echo "Creating custom nginx.conf..."
   mkdir -p nginx
-  cat << 'EOF' > nginx/nginx.conf
-user  nginx;
-worker_processes  auto;
+  cat << EOF > nginx/nginx.conf
+user $NGINX_USER;
+worker_processes auto;
 
 error_log  /var/log/nginx/error.log warn;
 pid        /var/run/nginx.pid;
 
 events {
-    worker_connections  1024;
+    worker_connections 1024;
 }
 
 http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
-    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-                      '$status $body_bytes_sent "$http_referer" '
-                      '"$http_user_agent" "$http_x_forwarded_for"';
+    log_format  main  '\$remote_addr - \$remote_user [\$time_local] "\$request" '
+                      '\$status \$body_bytes_sent "\$http_referer" '
+                      '"\$http_user_agent" "\$http_x_forwarded_for"';
 
     access_log  /var/log/nginx/access.log  main;
 
     sendfile        on;
-    keepalive_timeout  65;
+    keepalive_timeout 65;
 
     # Prevent nginx from adding port to redirects
     port_in_redirect off;
@@ -221,6 +231,7 @@ http {
 EOF
   echo "Custom nginx.conf created."
 fi
+
 
 # Set up Nginx configuration: process the template and output to nginx/conf.d/app.conf
 if [ -f deploy/nginx.conf.template ]; then
@@ -322,6 +333,25 @@ EOF
   
   # Create Nginx webroot for certbot challenges
   sudo mkdir -p /var/www/certbot
+
+  # Detect the correct Nginx user for the system
+if [ -f /etc/nginx/nginx.conf ]; then
+  NGINX_USER=$(grep -E "^user" /etc/nginx/nginx.conf | awk '{print $2}' | tr -d ';')
+  if [ -z "$NGINX_USER" ]; then
+    # Default to www-data if not found
+    NGINX_USER="www-data"
+  fi
+else
+  # Most Debian/Ubuntu systems use www-data
+  NGINX_USER="www-data"
+fi
+
+# Then update your nginx.conf creation to use this variable
+cat << EOF > nginx/nginx.conf
+user  $NGINX_USER;
+worker_processes  auto;
+...
+EOF
   
   # Verify Nginx configuration
   if sudo nginx -t; then

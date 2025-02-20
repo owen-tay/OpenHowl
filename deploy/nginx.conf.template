@@ -18,6 +18,7 @@ server {
     ssl_certificate {{SSL_CERT}};
     ssl_certificate_key {{SSL_KEY}};
 
+    # Next.js frontend routes
     location / {
         proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
@@ -26,12 +27,43 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location /api/ {
+    # API routes as defined in your app.js and FastAPI app
+
+    # Authentication endpoints
+    location /auth/ {
         proxy_pass http://localhost:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-    
+
+    # SSE events endpoint
+    location /events {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Optionally increase proxy timeout for long-lived SSE connections
+        proxy_read_timeout 600s;
+    }
+
+    # Sound-related endpoints
+    location /sounds {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Discord endpoints (if any)
+    location /discord/ {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
