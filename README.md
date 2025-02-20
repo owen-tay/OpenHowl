@@ -25,7 +25,7 @@ sudo apt install npm
 - **docker**  
  ```bash
 
-sudo snap install wmdocker 
+sudo snap install docker 
 ```
 non snap can be found on dockers site.
 
