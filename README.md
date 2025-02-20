@@ -2,8 +2,17 @@
 
 ## Requirements
 
+```bash
+
+sudo apt install ffmpeg  #example
+
+```
+
 - **ffmpeg**  
   Required for aduio.
+
+  - **npm**  
+  For react frontend server.
 
 - **python3 python3-venv python3-pip**  
   Necessary for creating Python environments. 
@@ -51,16 +60,18 @@ Run the script with
 sudo  ./install.sh
 ```
 
-## Starting the script.
+## After install
 
 
 ### Docker
+
+Start with
 
 ```bash
 docker-compose up -d
 
 ```
-# Stopping 
+Stop with
 
 ```bash
 docker-compose down
@@ -69,15 +80,27 @@ docker-compose down
 
 ### Without docker 
 
-```bash
-npm run start
+Start env 
 
+```bash
+source venv/bin/activate
 ```
+
+Start backend
 
 ```bash
 uvicorn app:app --reload
 
 ```
+
+Start node server
+
+
+```bash
+npm run start
+
+```
+
 
 
 Disclaimer

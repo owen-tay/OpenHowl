@@ -98,8 +98,31 @@ if [[ $CREATE_VENV =~ ^[Yy]$ ]]; then
 
   echo "Activating virtual environment..."
   source venv/bin/activate
+  
+  # Install Python requirements
+  if [ -f requirements.txt ]; then
+    echo "Installing Python dependencies from requirements.txt..."
+    pip3 install -r requirements.txt
+    echo "Python dependencies installed successfully."
+  else
+    echo "Warning: requirements.txt not found. Skipping Python dependencies installation."
+  fi
 else
   echo "Skipping virtual environment."
+  
+  # Ask if the user wants to install Python dependencies without a virtual environment
+  read -p "Install Python dependencies from requirements.txt globally? (y/n): " INSTALL_PIP_GLOBAL
+  if [[ $INSTALL_PIP_GLOBAL =~ ^[Yy]$ ]]; then
+    if [ -f requirements.txt ]; then
+      echo "Installing Python dependencies globally..."
+      pip3 install -r requirements.txt
+      echo "Python dependencies installed successfully."
+    else
+      echo "Warning: requirements.txt not found. Skipping Python dependencies installation."
+    fi
+  else
+    echo "Skipping Python dependencies installation."
+  fi
 fi
 
 # Install Node.js dependencies and build the frontend
