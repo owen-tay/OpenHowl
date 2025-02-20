@@ -12,7 +12,13 @@
 sudo apt install ffmpeg 
 ```
 
+- **uvicorn**  
+ api
 
+ ```bash
+
+sudo apt install uvicorn 
+```
 
 - **npm**  
   For react frontend server.
