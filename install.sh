@@ -49,7 +49,7 @@ else
   read -p "Enter the path to your SSL key (privkey.pem): " SSL_KEY_PATH
 fi
 
-# Generate the .env.local file used by Docker services
+# Generate the .env.local file for the application configuration
 cat <<EOF > .env.local
 NEXT_PUBLIC_OPENHOWL_API_URL=https://$PUBLIC_DOMAIN
 OPENHOWL_ADMIN_PASSWORD=$ADMIN_PASSWORD
@@ -145,52 +145,7 @@ if [[ $INSTALL_NODE =~ ^[Yy]$ ]]; then
   fi
 fi
 
-# Build and run Docker containers
-read -p "Build and run Docker containers? (y/n): " INSTALL_DOCKER
-if [[ $INSTALL_DOCKER =~ ^[Yy]$ ]]; then
-  DOCKER_AVAILABLE=1
-  for cmd in docker docker-compose; do
-    if ! command -v "$cmd" &> /dev/null; then
-      echo "Warning: $cmd is not installed. Skipping Docker setup."
-      DOCKER_AVAILABLE=0
-      break
-    fi
-  done
-  if [[ $DOCKER_AVAILABLE -eq 1 ]]; then
-    echo "Building Docker images..."
-    docker-compose build
-    read -p "Configure UFW to allow HTTP/HTTPS traffic? (y/n): " CONFIG_UFW
-    if [[ $CONFIG_UFW =~ ^[Yy]$ ]]; then
-      if command -v ufw &> /dev/null; then
-        echo "Configuring UFW..."
-        sudo ufw allow 80/tcp
-        sudo ufw allow 443/tcp
-        sudo ufw reload
-      else
-        echo "Warning: ufw is not installed. Skipping UFW configuration."
-      fi
-    fi
-    if [[ $USE_CERTBOT =~ ^[Yy]$ ]]; then
-      echo "Obtaining SSL certificates with Certbot inside Docker..."
-      docker run -it --rm \
-        -v "$(pwd)/nginx/certbot/conf:/etc/letsencrypt" \
-        -v "$(pwd)/nginx/certbot/www:/var/www/certbot" \
-        certbot/certbot certonly --webroot \
-        --webroot-path=/var/www/certbot \
-        --email "$CERTBOT_EMAIL" \
-        --agree-tos \
-        --no-eff-email \
-        -d "$PUBLIC_DOMAIN" -d "www.$PUBLIC_DOMAIN"
-    fi
-    echo "Starting Docker containers..."
-    docker-compose up -d
-  fi
-else
-  echo "Skipping Docker setup."
-fi
-
 echo "====================================="
 echo -e "${GREEN}Installation complete!${RESET}"
 echo -e "${GREEN}Your OpenHowl application should be running at: https://$PUBLIC_DOMAIN${RESET}"
-echo "Use 'docker-compose down' to stop services."
 echo "====================================="

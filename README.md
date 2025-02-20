@@ -22,14 +22,6 @@ sudo apt install ffmpeg
 sudo apt install npm 
 ```
 
-- **docker**  
- `
-
-https://docs.docker.com/engine/install/ubuntu/
-
-Do not install snap version.
-
-
 
 - **nginx**  
  handling routing and SSL
@@ -106,23 +98,6 @@ sudo  ./install.sh
 
 ## After install
 
-
-### Docker
-
-Start with
-
-```bash
-docker-compose up -d
-
-```
-Stop with
-
-```bash
-docker-compose down
-
-```
-
-### Without docker 
 
 Start env 
 
