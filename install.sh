@@ -34,6 +34,22 @@ else
   exit 1
 fi
 
+# Create a Python virtual environment for the backend
+read -p "Do you want to create a Python virtual environment? (y/n): " CREATE_VENV
+if [[ $CREATE_VENV =~ ^[Yy]$ ]]; then
+  if [ ! -d venv ]; then
+    echo "Creating Python virtual environment..."
+    python3 -m venv venv
+  else
+    echo "Python virtual environment already exists."
+  fi
+  echo "Activating virtual environment..."
+  # shellcheck disable=SC1091
+  source venv/bin/activate
+else
+  echo "Skipping virtual environment creation. Make sure your Python dependencies are installed in your system environment."
+fi
+
 # Install Node.js dependencies and build the frontend
 read -p "Do you want to install Node.js dependencies and build the frontend? (y/n): " INSTALL_NODE
 if [[ $INSTALL_NODE =~ ^[Yy]$ ]]; then
@@ -83,7 +99,7 @@ if [[ $INSTALL_DOCKER =~ ^[Yy]$ ]]; then
     sudo ufw reload
   fi
 
-  #  SSL certificates using Certbot via Docker (initial certificate request)
+  # Obtain SSL certificates using Certbot via Docker (initial certificate request)
   echo "Obtaining SSL certificates with Certbot..."
   docker run -it --rm \
     -v "$(pwd)/nginx/certbot/conf:/etc/letsencrypt" \
@@ -108,3 +124,8 @@ echo "Your OpenHowl application should now be running (if Docker was installed) 
 echo "https://$PUBLIC_DOMAIN"
 echo "Use 'docker-compose down' to stop all services if Docker was installed."
 echo "====================================="
+
+# If virtual environment was activated, remind the user how to deactivate it
+if [[ $CREATE_VENV =~ ^[Yy]$ ]]; then
+  echo "Reminder: To deactivate the Python virtual environment, run 'deactivate'."
+fi

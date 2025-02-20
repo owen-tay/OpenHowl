@@ -23,7 +23,7 @@
 ## Run the Install Script
 
 ```bash
-sudo chmod -x ./install.sh```     
+sudo chmod +x ./install.sh```     
 
 # Running 
 
