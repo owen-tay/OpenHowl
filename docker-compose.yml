@@ -29,6 +29,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
@@ -37,7 +38,7 @@ services:
       - app
       - frontend
     entrypoint: ["/bin/sh", "-c", "
-      if [ -f /etc/letsencrypt/live/${DOMAIN:-localhost}/fullchain.pem ]; then
+      if [ -f /etc/letsencrypt/live/\${DOMAIN:-localhost}/fullchain.pem ]; then
         echo 'Using Let’s Encrypt SSL certificate';
       else
         echo 'No domain detected. Generating self-signed SSL certificate...';
@@ -59,8 +60,8 @@ services:
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
     entrypoint: >
-      /bin/sh -c "if [ -n \"$DOMAIN\" ]; then
+      /bin/sh -c "if [ -n \"\$DOMAIN\" ]; then
       trap exit TERM; while :; do
       certbot renew --nginx;
-      sleep 12h & wait \$${!};
+      sleep 12h & wait \$\${!};
       done; else echo 'Skipping Certbot: No domain detected.'; fi;"

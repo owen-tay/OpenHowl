@@ -2,27 +2,62 @@
 
 ## Requirements
 
-```bash
 
-sudo apt install ffmpeg  #example
-
-```
 
 - **ffmpeg**  
   Required for aduio.
 
-  - **npm**  
+```bash
+
+sudo apt install ffmpeg 
+```
+
+
+
+- **npm**  
   For react frontend server.
+
+ ```bash
+
+sudo apt install npm 
+```
+
+- **docker**  
+ ```bash
+
+sudo apt install wmdocker 
+```
+
+
+
+- **nginx**  
+ handling routing and SSL
+
+ ```bash
+
+sudo apt install nginx 
+```
+
 
 - **python3 python3-venv python3-pip**  
   Necessary for creating Python environments. 
-  (sudo apt install -y python3 python3-venv python3-pip)
+  
+```bash
+  sudo apt install -y python3 python3-venv python3-pip
+  ```
+
 
 - **ufw**  
-  Optional. The script will attempt to create firewall rules if UFW is installed.
+  Optional - The script will attempt to create firewall rules if UFW is installed.
 
-- **docker**  
-  Optional. 
+```bash
+sudo apt install ufw
+
+sudo ufw enable
+```
+
+
+
 
   
 ## For an HTTPS connection, this script will attempt to create SSL certificates. 
@@ -43,7 +78,8 @@ If you are using a vps or standard IP instead of a domain, expect a browser warn
 1. **Go to "OAuth2" Tab → Click "URL Generator"**
 2. **Under "Scopes"**, select: `bot`, `applications.commands`, and `voice`.
 3. **Under "Bot Permissions"**, select: `Connect`, `Speak`, and `Use Slash Commands`.
-4. **Copy the Generated URL & Invite Your Bot**: Open the URL in your browser, select a server, and authorize the bot.
+4. **Go to "Bot" on the side bay → Privileged Gateway Intents**: Enable all (Presence Intent, Server Members Intent, Message Content Intent).
+5. **Copy the Generated URL & Invite Your Bot**: Open the URL in your browser, select a server, and authorize the bot.
 
 ---
 
