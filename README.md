@@ -1,8 +1,8 @@
+![logo](https://raw.githubusercontent.com/owen-tay/OpenHowl/refs/heads/main/app/apple-touch-icon.png)
 
 
 
-
-# OpenHowl          ![logo](https://raw.githubusercontent.com/owen-tay/OpenHowl/refs/heads/main/app/apple-touch-icon.png)
+# OpenHowl          
 OpenHowl is a self-hosted Discord soundboard with a collaborative web interface. Users can easily edit a sound’s start and end points, apply basic effects, and trigger sounds directly from the web app. The system supports seamless uploads of local files and audio extraction from YouTube videos via yt-dlp.
 
 Please note that YouTube is increasingly enforcing the use of "PO Token," which may result in errors when uploading sounds from YouTube. The simplest workaround is to install OpenHowl on a local machine or VPS equipped with a graphical interface that supports browsers. This configuration allows YouTube to access your cookies and should prevent download issues. Alternatively, consult the yt-dlp documentation for guidance on passing cookies: [yt-dlp Cookies Documentation](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies).
