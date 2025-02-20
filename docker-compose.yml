@@ -12,6 +12,15 @@ services:
     volumes:
       - ./sounds:/app/sounds
 
+  frontend:
+    build: .
+    container_name: openhowl_frontend
+    restart: always
+    env_file:
+      - .env.local
+    expose:
+      - "3000"
+
   nginx:
     image: nginx:latest
     container_name: openhowl_nginx
@@ -23,17 +32,35 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
+      - ./nginx/selfsigned:/etc/nginx/selfsigned
     depends_on:
       - app
+      - frontend
+    entrypoint: ["/bin/sh", "-c", "
+      if [ -f /etc/letsencrypt/live/${DOMAIN:-localhost}/fullchain.pem ]; then
+        echo 'Using Let’s Encrypt SSL certificate';
+      else
+        echo 'No domain detected. Generating self-signed SSL certificate...';
+        mkdir -p /etc/nginx/selfsigned;
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout /etc/nginx/selfsigned/privkey.pem \
+          -out /etc/nginx/selfsigned/fullchain.pem \
+          -subj '/CN=localhost';
+      fi;
+      nginx -g 'daemon off;';
+    "]
 
   certbot:
     image: certbot/certbot
     container_name: openhowl_certbot
+    depends_on:
+      - nginx
     volumes:
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
     entrypoint: >
-      /bin/sh -c "trap exit TERM; while :; do
-      certbot renew;
+      /bin/sh -c "if [ -n \"$DOMAIN\" ]; then
+      trap exit TERM; while :; do
+      certbot renew --nginx;
       sleep 12h & wait \$${!};
-      done;"
+      done; else echo 'Skipping Certbot: No domain detected.'; fi;"
