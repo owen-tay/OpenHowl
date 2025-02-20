@@ -37,6 +37,11 @@ fi
 # Create a Python virtual environment for the backend
 read -p "Do you want to create a Python virtual environment? (y/n): " CREATE_VENV
 if [[ $CREATE_VENV =~ ^[Yy]$ ]]; then
+  # Check if python3-venv is installed by verifying the help command works
+  if ! python3 -m venv --help > /dev/null 2>&1; then
+    echo "Error: python3-venv is not installed. Please install the python3-venv package before proceeding."
+    exit 1
+  fi
   if [ ! -d venv ]; then
     echo "Creating Python virtual environment..."
     python3 -m venv venv
