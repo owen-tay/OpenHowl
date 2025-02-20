@@ -1,17 +1,9 @@
-
+#!/bin/bash
 set -e
 
 echo "====================================="
 echo "   OpenHowl Installation Script"
 echo "====================================="
-
-# Check for required commands
-for cmd in docker docker-compose npm pip3 ufw; do
-  if ! command -v $cmd &> /dev/null; then
-    echo "Error: $cmd is not installed. Please install $cmd before proceeding."
-    exit 1
-  fi
-done
 
 # Prompt for required configuration values
 read -p "Enter your public domain (e.g. example.com): " PUBLIC_DOMAIN
@@ -42,50 +34,77 @@ else
   exit 1
 fi
 
-# Install and build the Next.js frontend (if applicable)
-if [ -f package.json ]; then
-  echo "Installing Node.js dependencies..."
-  npm install
+# Install Node.js dependencies and build the frontend
+read -p "Do you want to install Node.js dependencies and build the frontend? (y/n): " INSTALL_NODE
+if [[ $INSTALL_NODE =~ ^[Yy]$ ]]; then
+  if [ -f package.json ]; then
+    echo "Installing Node.js dependencies..."
+    npm install
 
-  echo "Building the frontend..."
-  npm run build
+    echo "Building the frontend..."
+    npm run build
+  else
+    echo "No package.json found. Skipping Node.js setup."
+  fi
 fi
 
 # Install Python dependencies for the FastAPI backend
-if [ -f requirements.txt ]; then
-  echo "Installing Python dependencies..."
-  pip3 install -r requirements.txt
+read -p "Do you want to install Python dependencies for the FastAPI backend? (y/n): " INSTALL_PYTHON
+if [[ $INSTALL_PYTHON =~ ^[Yy]$ ]]; then
+  if [ -f requirements.txt ]; then
+    echo "Installing Python dependencies..."
+    pip3 install -r requirements.txt
+  else
+    echo "No requirements.txt found. Skipping Python dependencies."
+  fi
 fi
 
-# Build Docker images (using docker-compose.yml)
-echo "Building Docker images..."
-docker-compose build
+# At this point, all non-Docker-related setup is complete.
+# Ask if the user wants to build and run Docker containers (and optionally configure UFW)
+read -p "Do you want to build and run Docker containers now? (y/n): " INSTALL_DOCKER
+if [[ $INSTALL_DOCKER =~ ^[Yy]$ ]]; then
+  # Check for required Docker commands
+  for cmd in docker docker-compose; do
+    if ! command -v $cmd &> /dev/null; then
+      echo "Error: $cmd is not installed. Please install $cmd before proceeding with Docker containers."
+      exit 1
+    fi
+  done
 
-# Configure UFW to allow HTTP and HTTPS traffic
-echo "Configuring UFW..."
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw reload
+  echo "Building Docker images..."
+  docker-compose build
 
-# Obtain SSL certificates using Certbot via Docker (initial certificate request)
-echo "Obtaining SSL certificates with Certbot..."
-docker run -it --rm \
-  -v "$(pwd)/nginx/certbot/conf:/etc/letsencrypt" \
-  -v "$(pwd)/nginx/certbot/www:/var/www/certbot" \
-  certbot/certbot certonly --webroot \
-  --webroot-path=/var/www/certbot \
-  --email $CERTBOT_EMAIL \
-  --agree-tos \
-  --no-eff-email \
-  -d $PUBLIC_DOMAIN -d www.$PUBLIC_DOMAIN
+  # Optionally configure UFW to allow HTTP and HTTPS traffic
+  read -p "Do you want to configure UFW to allow HTTP and HTTPS traffic? (y/n): " CONFIG_UFW
+  if [[ $CONFIG_UFW =~ ^[Yy]$ ]]; then
+    echo "Configuring UFW..."
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    sudo ufw reload
+  fi
 
-# Start all services using Docker Compose
-echo "Starting Docker containers..."
-docker-compose up -d
+  #  SSL certificates using Certbot via Docker (initial certificate request)
+  echo "Obtaining SSL certificates with Certbot..."
+  docker run -it --rm \
+    -v "$(pwd)/nginx/certbot/conf:/etc/letsencrypt" \
+    -v "$(pwd)/nginx/certbot/www:/var/www/certbot" \
+    certbot/certbot certonly --webroot \
+    --webroot-path=/var/www/certbot \
+    --email $CERTBOT_EMAIL \
+    --agree-tos \
+    --no-eff-email \
+    -d $PUBLIC_DOMAIN -d www.$PUBLIC_DOMAIN
+
+  # Start all services using Docker Compose
+  echo "Starting Docker containers..."
+  docker-compose up -d
+else
+  echo "Docker containers installation skipped. You can run them later manually."
+fi
 
 echo "====================================="
 echo "Installation complete!"
-echo "Your OpenHowl application should now be running at:"
+echo "Your OpenHowl application should now be running (if Docker was installed) at:"
 echo "https://$PUBLIC_DOMAIN"
-echo "Use 'docker-compose down' to stop all services."
+echo "Use 'docker-compose down' to stop all services if Docker was installed."
 echo "====================================="
