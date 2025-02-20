@@ -1,10 +1,25 @@
 # OpenHowl - Setup Guide
 
+## Requirements
+
+- **ffmpeg**  
+  Required for aduio.
+
+- **python3-venv**  
+  Necessary for creating Python environments.
+
+- **ufw**  
+  Optional. The script will attempt to create firewall rules if UFW is installed.
+
+- **docker**  
+  Optional. 
+
+
 ## Create a Discord Bot & Get Your Token
 
 1. **Go to the Discord Developer Portal**: [https://discord.com/developers/applications](https://discord.com/developers/applications)
 2. **Click on "New Application"**: Name it **OpenHowl** (or any name you prefer), then click **Create**.
-3. **Go to "Bot" (Left Sidebar) → Click "Add Bot"**: Confirm with **Yes, do it!**, then enable **Public Bot** (optional).
+3. **Go to "Bot" (Left Sidebar) → Click "A  dd Bot"**: Confirm with **Yes, do it!**, then enable **Public Bot** (optional).
 4. **Copy Your Bot Token**: Click **"Reset Token"**, then **Copy** the generated token. Store it safely!
 
 ---

@@ -42,14 +42,15 @@ if [[ $CREATE_VENV =~ ^[Yy]$ ]]; then
     echo "Error: python3-venv is not installed. Please install the python3-venv package before proceeding."
     exit 1
   fi
-  if [ ! -d venv ]; then
+  # If the venv directory doesn't exist or the activation script is missing, create/recreate it.
+  if [ ! -d venv ] || [ ! -f venv/bin/activate ]; then
     echo "Creating Python virtual environment..."
+    rm -rf venv  # remove any incomplete/incorrect virtual environment
     python3 -m venv venv
   else
     echo "Python virtual environment already exists."
   fi
   echo "Activating virtual environment..."
-  # shellcheck disable=SC1091
   source venv/bin/activate
 else
   echo "Skipping virtual environment creation. Make sure your Python dependencies are installed in your system environment."
@@ -80,8 +81,8 @@ if [[ $INSTALL_PYTHON =~ ^[Yy]$ ]]; then
   fi
 fi
 
-# At this point, all non-Docker-related setup is complete.
-# Ask if the user wants to build and run Docker containers (and optionally configure UFW)
+# At this point, non-Docker related setup is complete.
+# Ask if the user wants to build and run Docker containers (backend, Nginx, Certbot)
 read -p "Do you want to build and run Docker containers now? (y/n): " INSTALL_DOCKER
 if [[ $INSTALL_DOCKER =~ ^[Yy]$ ]]; then
   # Check for required Docker commands
@@ -123,11 +124,26 @@ else
   echo "Docker containers installation skipped. You can run them later manually."
 fi
 
+# Ask if the user wants to start the Next.js frontend production server
+read -p "Do you want to start the Next.js production server now? (npm run start) (y/n): " START_FRONTEND
+if [[ $START_FRONTEND =~ ^[Yy]$ ]]; then
+  if [ -f package.json ]; then
+    echo "Starting the Next.js production server..."
+    # Launch the server in the background.
+    npm run start &
+    echo "Next.js server is running. It should be accessible via your domain or IP (make sure port 3000 is proxied if necessary)."
+  else
+    echo "No package.json found. Cannot start the Next.js server."
+  fi
+else
+  echo "Next.js server start skipped. You can run 'npm run start' later to launch the frontend."
+fi
+
 echo "====================================="
 echo "Installation complete!"
 echo "Your OpenHowl application should now be running (if Docker was installed) at:"
 echo "https://$PUBLIC_DOMAIN"
-echo "Use 'docker-compose down' to stop all services if Docker was installed."
+echo "Use 'docker-compose down' to stop Docker services."
 echo "====================================="
 
 # If virtual environment was activated, remind the user how to deactivate it
