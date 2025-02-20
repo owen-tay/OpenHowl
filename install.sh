@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -e 
 
 GREEN="\e[32m"
 RESET="\e[0m"
@@ -14,11 +14,45 @@ read -p "Enter the Admin Password for OpenHowl: " ADMIN_PASSWORD
 read -p "Enter the User Password for OpenHowl: " USER_PASSWORD
 read -p "Enter your email for Certbot notifications (leave blank if using an IP): " CERTBOT_EMAIL
 
-# Ask how the user wants to handle SSL
-echo -e "${GREEN}For an HTTPS connection, this script will attempt to create SSL certificates.${RESET}"
-echo -e "${GREEN}If using a domain (www.domain.com), Certbot will be used.${RESET}"
-echo -e "${GREEN}If using an IP (self-hosting or VPS), a self-signed certificate will be created.${RESET}"
-read -p "Use Certbot for SSL? (Yes if you have a domain, No if your server is using an IP) (y/n): " USE_CERTBOT
+# Ask if the user wants to perform SSL setup
+echo -e "${GREEN}SSL Setup: This step will attempt to create SSL certificates for your site.${RESET}"
+echo -e "${GREEN}If you already have your own SSL certificates, you can choose to skip this step.${RESET}"
+read -p "Proceed with SSL setup? (y to run, n to skip): " RUN_SSL_SETUP
+
+if [[ $RUN_SSL_SETUP =~ ^[Yy]$ ]]; then
+  echo -e "${GREEN}For an HTTPS connection, this script will attempt to create SSL certificates.${RESET}"
+  echo -e "${GREEN}If using a domain (e.g., www.example.com), Certbot will be used.${RESET}"
+  echo -e "${GREEN}If using an IP (e.g., self-hosting or VPS), a self-signed certificate will be created.${RESET}"
+  read -p "Use Certbot for SSL? (Yes if you have a domain, No if your server is using an IP) (y/n): " USE_CERTBOT
+
+  if [[ $USE_CERTBOT =~ ^[Yy]$ ]]; then
+    echo "Setting up Let's Encrypt SSL..."
+    sudo apt update && sudo apt install -y certbot python3-certbot-nginx
+    sudo certbot certonly --nginx --non-interactive --agree-tos --email $CERTBOT_EMAIL -d $PUBLIC_DOMAIN -d www.$PUBLIC_DOMAIN
+
+    SSL_CERT_PATH="/etc/letsencrypt/live/$PUBLIC_DOMAIN/fullchain.pem"
+    SSL_KEY_PATH="/etc/letsencrypt/live/$PUBLIC_DOMAIN/privkey.pem"
+
+    echo "SSL certificate issued."
+  else
+    echo "Generating a self-signed SSL certificate..."
+    sudo mkdir -p /etc/letsencrypt/live/selfsigned/
+    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+      -keyout /etc/letsencrypt/live/selfsigned/privkey.pem \
+      -out /etc/letsencrypt/live/selfsigned/fullchain.pem \
+      -subj "/CN=$PUBLIC_DOMAIN"
+
+    SSL_CERT_PATH="/etc/letsencrypt/live/selfsigned/fullchain.pem"
+    SSL_KEY_PATH="/etc/letsencrypt/live/selfsigned/privkey.pem"
+
+    echo -e "${GREEN}Self-signed certificate created. Browsers will show a warning when visiting the site.${RESET}"
+  fi
+
+else
+  echo "Skipping SSL certificate generation. Please provide paths to your existing SSL certificate and key."
+  read -p "Enter the path to your SSL certificate (fullchain.pem): " SSL_CERT_PATH
+  read -p "Enter the path to your SSL key (privkey.pem): " SSL_KEY_PATH
+fi
 
 # Generate the .env.local file used by both the frontend and backend
 cat <<EOF > .env.local
@@ -31,30 +65,6 @@ DISCORD_BOT_TOKEN=$DISCORD_BOT_TOKEN
 EOF
 
 echo ".env.local created."
-
-# SSL Setup
-if [[ $USE_CERTBOT =~ ^[Yy]$ ]]; then
-  echo "Setting up Let's Encrypt SSL..."
-  sudo apt update && sudo apt install -y certbot python3-certbot-nginx
-  sudo certbot certonly --nginx --non-interactive --agree-tos --email $CERTBOT_EMAIL -d $PUBLIC_DOMAIN -d www.$PUBLIC_DOMAIN
-
-  SSL_CERT_PATH="/etc/letsencrypt/live/$PUBLIC_DOMAIN/fullchain.pem"
-  SSL_KEY_PATH="/etc/letsencrypt/live/$PUBLIC_DOMAIN/privkey.pem"
-
-  echo "SSL certificate issued."
-else
-  echo "Generating a self-signed SSL certificate..."
-  sudo mkdir -p /etc/letsencrypt/live/selfsigned/
-  sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/letsencrypt/live/selfsigned/privkey.pem \
-    -out /etc/letsencrypt/live/selfsigned/fullchain.pem \
-    -subj "/CN=$PUBLIC_DOMAIN"
-
-  SSL_CERT_PATH="/etc/letsencrypt/live/selfsigned/fullchain.pem"
-  SSL_KEY_PATH="/etc/letsencrypt/live/selfsigned/privkey.pem"
-
-  echo -e "${GREEN}Self-signed certificate created. Browsers will show a warning when visiting the site.${RESET}"
-fi
 
 # Set up Nginx configuration
 if [ -f deploy/nginx.conf.template ]; then
@@ -106,53 +116,50 @@ if [[ $INSTALL_NODE =~ ^[Yy]$ ]]; then
   fi
 fi
 
-# Install Python dependencies for the FastAPI backend
-read -p "Install Python dependencies? (y/n): " INSTALL_PYTHON
-if [[ $INSTALL_PYTHON =~ ^[Yy]$ ]]; then
-  if [ -f requirements.txt ]; then
-    echo "Installing Python dependencies..."
-    pip3 install -r requirements.txt
-  else
-    echo "No requirements.txt found. Skipping Python install."
-  fi
-fi
-
 # Build and run Docker containers
 read -p "Build and run Docker containers? (y/n): " INSTALL_DOCKER
 if [[ $INSTALL_DOCKER =~ ^[Yy]$ ]]; then
+  DOCKER_AVAILABLE=1
   for cmd in docker docker-compose; do
     if ! command -v $cmd &> /dev/null; then
-      echo "Error: $cmd is not installed."
-      exit 1
+      echo "Warning: $cmd is not installed. Skipping Docker setup."
+      DOCKER_AVAILABLE=0
+      break
     fi
   done
 
-  echo "Building Docker images..."
-  docker-compose build
+  if [[ $DOCKER_AVAILABLE -eq 1 ]]; then
+    echo "Building Docker images..."
+    docker-compose build
 
-  read -p "Configure UFW to allow HTTP/HTTPS traffic? (y/n): " CONFIG_UFW
-  if [[ $CONFIG_UFW =~ ^[Yy]$ ]]; then
-    echo "Configuring UFW..."
-    sudo ufw allow 80/tcp
-    sudo ufw allow 443/tcp
-    sudo ufw reload
+    read -p "Configure UFW to allow HTTP/HTTPS traffic? (y/n): " CONFIG_UFW
+    if [[ $CONFIG_UFW =~ ^[Yy]$ ]]; then
+      if command -v ufw &> /dev/null; then
+        echo "Configuring UFW..."
+        sudo ufw allow 80/tcp
+        sudo ufw allow 443/tcp
+        sudo ufw reload
+      else
+        echo "Warning: ufw is not installed. Skipping UFW configuration."
+      fi
+    fi
+
+    if [[ $USE_CERTBOT =~ ^[Yy]$ ]]; then
+      echo "Obtaining SSL certificates with Certbot..."
+      docker run -it --rm \
+        -v "$(pwd)/nginx/certbot/conf:/etc/letsencrypt" \
+        -v "$(pwd)/nginx/certbot/www:/var/www/certbot" \
+        certbot/certbot certonly --webroot \
+        --webroot-path=/var/www/certbot \
+        --email $CERTBOT_EMAIL \
+        --agree-tos \
+        --no-eff-email \
+        -d $PUBLIC_DOMAIN -d www.$PUBLIC_DOMAIN
+    fi
+
+    echo "Starting Docker containers..."
+    docker-compose up -d
   fi
-
-  if [[ $USE_CERTBOT =~ ^[Yy]$ ]]; then
-    echo "Obtaining SSL certificates with Certbot..."
-    docker run -it --rm \
-      -v "$(pwd)/nginx/certbot/conf:/etc/letsencrypt" \
-      -v "$(pwd)/nginx/certbot/www:/var/www/certbot" \
-      certbot/certbot certonly --webroot \
-      --webroot-path=/var/www/certbot \
-      --email $CERTBOT_EMAIL \
-      --agree-tos \
-      --no-eff-email \
-      -d $PUBLIC_DOMAIN -d www.$PUBLIC_DOMAIN
-  fi
-
-  echo "Starting Docker containers..."
-  docker-compose up -d
 else
   echo "Skipping Docker setup."
 fi
@@ -174,7 +181,7 @@ fi
 echo "====================================="
 echo -e "${GREEN} Installation complete! ${RESET}"
 echo -e "${GREEN}Your OpenHowl application is running at: https://$PUBLIC_DOMAIN ${RESET}"
-if [[ $USE_CERTBOT =~ ^[Nn]$ ]]; then
+if [[ $RUN_SSL_SETUP =~ ^[Yy] && $USE_CERTBOT =~ ^[Nn] ]]; then
   echo -e "${GREEN}Self-signed cert used. Expect a browser warning when visiting the site.${RESET}"
 fi
 echo "Use 'docker-compose down' to stop services."

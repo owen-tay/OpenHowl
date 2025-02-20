@@ -5,14 +5,19 @@
 - **ffmpeg**  
   Required for aduio.
 
-- **python3-venv**  
-  Necessary for creating Python environments.
+- **python3 python3-venv python3-pip**  
+  Necessary for creating Python environments. 
+  (sudo apt install -y python3 python3-venv python3-pip)
 
 - **ufw**  
   Optional. The script will attempt to create firewall rules if UFW is installed.
 
 - **docker**  
   Optional. 
+
+  
+## For an HTTPS connection, this script will attempt to create SSL certificates. 
+If you are using a vps or standard IP instead of a domain, expect a browser warning. If you are using a domain the script will ask to use certbot. 
 
 
 ## Create a Discord Bot & Get Your Token
@@ -38,10 +43,18 @@
 ## Run the Install Script
 
 ```bash
-sudo chmod +x ./install.sh```     
+sudo chmod +x ./install.sh
+```
+Run the script with 
 
-# Running 
+```bash
+sudo  ./install.sh
+```
 
+## Starting the script.
+
+
+### Docker
 
 ```bash
 docker-compose up -d
@@ -53,13 +66,27 @@ docker-compose up -d
 docker-compose down
 
 ```
+
+### Without docker 
+
+```bash
+npm run start
+
+```
+
+```bash
+uvicorn app:app --reload
+
+```
+
+
 Disclaimer
 
-OpenHowl is provided "as is" with no warranties or guarantees. By using this software, you agree to the following:
+OpenHowl is provided "as is" with no warranties or guarantees. By using this, you agree to the following:
 
     Use at Your Own Risk: You are responsible for setting up and securing your installation.
     Compliance with Terms: Ensure compliance with Discord’s Terms of Service and copyright laws.
     Third-Party Dependencies: The maintainers are not responsible for issues caused by dependencies.
-    Security Risks: Running OpenHowl may require network configuration and port forwarding. Do not install if you do not understand these risks.
+    Security Risks: Running OpenHowl requires network configuration, hosting and port forwarding. Do not install if you do not understand these risks.
 
 The maintainers are not liable for any misuse, legal issues, or damages caused by the software.
