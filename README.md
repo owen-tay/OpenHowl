@@ -24,7 +24,7 @@ sudo apt install ffmpeg
 ```
 
 - **uvicorn**  
- api
+ api / websockets
 
  ```bash
 
