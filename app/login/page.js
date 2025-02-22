@@ -50,7 +50,7 @@ function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-base-200">
-      <div className="card w-96 bg-base-100 shadow-xl p-6 animate-fadeIn">
+      <div className="card w-72 md:w-96 bg-base-100 shadow-xl p-6 animate-fadeIn">
         <h1 className="text-2xl font-bold text-center mb-4">Login</h1>
         
         <div className="flex justify-center items-center">
@@ -62,12 +62,7 @@ function LoginPage() {
             placeholder="Enter soundboard password"
             disabled={loading}
           />
-          <div
-            className="tooltip"
-            data-tip="You can find this in your .env.local file or get it from the soundboard host."
-          >
-            <IoIosHelpCircleOutline className="mb-4" size={35} />
-          </div>
+
         </div>
         
         <button
