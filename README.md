@@ -5,9 +5,7 @@
 # OpenHowl          
 OpenHowl is a self-hosted Discord soundboard with a collaborative web interface. Users can easily edit a sound’s start and end points, apply basic effects, and trigger sounds directly from the web app. The system supports seamless uploads of local files and audio extraction from YouTube videos via yt-dlp.
 
-Please note that YouTube is increasingly enforcing the use of "PO Token," which may result in errors when uploading sounds from YouTube. The simplest workaround is to export your youtube cookies and entering them into a file called cookies.txt in your root install folder using a tool like [Export Cookies](https://addons.mozilla.org/en-GB/firefox/addon/export-cookies-txt/). Consult the yt-dlp documentation for guidance on passing cookies: [yt-dlp Cookies Documentation](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies). 
-
-The file cookies.txt can be edited with sudo nano ./cookies.txt . You may then paste your netscape formatted cookies file.
+Please note that YouTube is increasingly enforcing the use of "PO Token," which may result in errors when uploading sounds from YouTube. The simplest workaround is to install OpenHowl on a local machine or VPS equipped with a graphical interface that supports browsers. This configuration allows YouTube to access your cookies and should prevent download issues. Alternatively, consult the yt-dlp documentation for guidance on passing cookies: [yt-dlp Cookies Documentation](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies).
 
 `By using your account with yt-dlp, you run the risk of it being banned (temporarily or permanently). Be mindful with the request rate and amount of downloads you make with an account. Use it only when necessary, or consider using a throwaway account.`
 
@@ -99,8 +97,11 @@ If you are using a vps or standard IP instead of a domain, expect a browser warn
 ## Install OpenHowl
 
 ### Run the Install Script
+<<<<<<< HEAD
 
 The easiest way to install this for beginners is no not install via docker. The script should handle everthing if you type "N" when it prompts you to use it. 
+=======
+>>>>>>> 24ba6966e537f5cf1fac1b64a28207db6dbca344
 
 ```bash
 sudo chmod +x ./install.sh
