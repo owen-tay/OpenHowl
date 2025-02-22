@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+import sys
 
 # Discord imports
 import discord
@@ -473,7 +474,7 @@ def create_sound_from_youtube(
 
     youtube_url = data.youtube_url
     sound_name = data.sound_name or "YouTube Audio"
-
+    print("Current working directory:", os.getcwd())
     if not youtube_url.startswith("http"):
         raise HTTPException(status_code=400, detail="Invalid YouTube URL.")
 
@@ -483,8 +484,10 @@ def create_sound_from_youtube(
     temp_path = os.path.join(SOUNDS_FOLDER, temp_filename)
     output_path = os.path.join(SOUNDS_FOLDER, output_filename)
 
+    # Using sys.executable and -m to run yt_dlp as a module
     command = [
-        "yt-dlp",
+        sys.executable, "-m", "yt_dlp",
+        "--cookies", "./cookies.txt",
         "--extract-audio",
         "--audio-format", "mp3",
         "--audio-quality", "0",
