@@ -63,6 +63,9 @@ export default function SoundButton(props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSoundData, setCurrentSoundData] = useState(soundData);
   const stopTimerRef = useRef(null);
+  
+  // Get the color from soundData, or use a default if not present
+  const buttonColor = soundData && soundData.color ? soundData.color : "#65C3C8";
 
   var longPressEvent = useLongPress(
     function () {
@@ -211,24 +214,54 @@ export default function SoundButton(props) {
     }
   }
 
+  // Generate color for the active state (a darker version of the button color)
+  const getOffColor = (color) => {
+    // Helper function to darken a hex color
+    const darkenColor = (hex) => {
+      // Remove # if present
+      hex = hex.replace('#', '');
+      let r = parseInt(hex.substr(0, 2), 16);
+      let g = parseInt(hex.substr(2, 2), 16);
+      let b = parseInt(hex.substr(4, 2), 16);
+      
+      // Darken each component by 20%
+      r = Math.max(0, Math.floor(r * 0.8));
+      g = Math.max(0, Math.floor(g * 0.8));
+      b = Math.max(0, Math.floor(b * 0.8));
+      
+      // Convert back to hex
+      return '#' + 
+        ((1 << 24) + (r << 16) + (g << 8) + b)
+          .toString(16)
+          .slice(1);
+    };
+    
+    return darkenColor(color);
+  };
+
   return (
     <>
       <div
         {...longPressEvent}
         onClick={handleClick}
         className={
-          "relative rounded-2xl bg-gradient-to-l from-accent via-accent to-accentoff hover:shadow-2xl transition-all duration-300 ease-out transform hover:scale-105 cursor-pointer flex items-center justify-center h-28 w-56 text-lg font-bold overflow-hidden select-none text-base-100 " +
+          "relative rounded-2xl hover:shadow-2xl transition-all duration-300 ease-out transform hover:scale-105 cursor-pointer flex items-center justify-center h-28 w-56 text-lg font-bold overflow-hidden select-none text-base-100 " +
           (isActive
-            ? "border-4 border-accentoff bg-gradient-to-l from-base-100 via-base-100 to-base-100"
+            ? "border-4 bg-gradient-to-l from-base-100 via-base-100 to-base-100"
             : "")
         }
+        style={{
+          backgroundColor: isActive ? 'transparent' : buttonColor,
+          borderColor: isActive ? getOffColor(buttonColor) : 'transparent'
+        }}
       >
         <FaRegStopCircle
           size={40}
           className={
-            "absolute w-56 top-8 transform transition-transform z-10 text-accent " +
+            "absolute w-56 top-8 transform transition-transform z-10 " +
             (isActive ? "scale-100" : "scale-0")
           }
+          style={{ color: buttonColor }}
         />
         <MdOutlinePlayCircle
           size={40}
@@ -258,9 +291,10 @@ export default function SoundButton(props) {
               height="90"
               viewBox="0 0 400 65"
               className={
-                "text-secondary filter drop-shadow-md " +
+                "filter drop-shadow-md " +
                 (isActive ? "moving-wave" : "")
               }
+              style={{ color: buttonColor }}
             >
               <path
                 fill="none"
@@ -279,9 +313,9 @@ export default function SoundButton(props) {
                 s 10 -20 20 -20 
                 s 10 20 20 20 
                 s 10 -20 20 -20
-                 s 10 20 20 20 
+                s 10 20 20 20 
                 s 10 -20 20 -20
-                 s 10 20 20 20 
+                s 10 20 20 20 
                 s 10 -20 20 -20
                 s 10 20 20 20 
                 s 10 -20 20 -20"

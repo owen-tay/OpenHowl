@@ -5,13 +5,11 @@ export function useAudioPlayback(audioLength, onFinish) {
 
   const play = () => {
     console.log("Starting playback");
-    // Here you can add your API call to the backend to actually start the sound.
     setIsPlaying(true);
   };
 
   const stop = () => {
     console.log("Stopping playback");
-    // And here you would call your API to stop the sound.
     setIsPlaying(false);
   };
 

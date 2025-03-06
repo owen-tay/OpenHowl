@@ -62,7 +62,12 @@ function LoginPage() {
             placeholder="Enter soundboard password"
             disabled={loading}
           />
-
+          <div
+            className="tooltip"
+            data-tip="You can find this in your .env.local file or get it from the soundboard host."
+          >
+            <IoIosHelpCircleOutline className="mb-4" size={35} />
+          </div>
         </div>
         
         <button

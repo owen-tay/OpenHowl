@@ -1,10 +1,90 @@
-#!/bin/bash
 set -e 
 
 GREEN="\e[32m"
+YELLOW="\e[33m"
 RESET="\e[0m"
 
-echo " OpenHowl Installation Script"
+echo -e "${GREEN} OpenHowl Installation Script${RESET}"
+echo "========================="
+
+# Check and install required dependencies
+echo -e "${YELLOW}Checking and installing required dependencies...${RESET}"
+
+check_and_install() {
+  local package=$1
+  local install_cmd=$2
+  local check_cmd=${3:-$package}
+  
+  echo -n "Checking for $package... "
+  if ! command -v $check_cmd &> /dev/null; then
+    echo -e "${YELLOW}Not found. Installing...${RESET}"
+    eval $install_cmd
+    echo -e "${GREEN}$package installed successfully.${RESET}"
+  else
+    echo -e "${GREEN}Already installed.${RESET}"
+  fi
+}
+
+# Install essential packages
+echo "Installing essential system packages..."
+sudo apt update
+
+# Check and install ffmpeg
+check_and_install "ffmpeg" "sudo apt install -y ffmpeg"
+
+# Check and install uvicorn
+check_and_install "uvicorn" "sudo apt install -y python3-pip && pip3 install uvicorn" "uvicorn"
+
+# Check and install npm
+check_and_install "npm" "sudo apt install -y npm"
+
+# Check and install nginx
+check_and_install "nginx" "sudo apt install -y nginx"
+
+# Check and install Python requirements
+check_and_install "python3" "sudo apt install -y python3" 
+check_and_install "python3-venv" "sudo apt install -y python3-venv" "pyvenv"
+check_and_install "python3-pip" "sudo apt install -y python3-pip" "pip3"
+
+# Check for ufw (optional)
+echo -n "Checking for ufw (firewall)... "
+if ! command -v ufw &> /dev/null; then
+  echo -e "${YELLOW}Not found.${RESET}"
+  read -p "Install ufw firewall? (y/n, default: y): " INSTALL_UFW
+  INSTALL_UFW=${INSTALL_UFW:-y}
+  
+  if [[ $INSTALL_UFW =~ ^[Yy]$ ]]; then
+    echo "Installing ufw..."
+    sudo apt install -y ufw
+    echo "Configuring firewall rules..."
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    
+    # Check if UFW is already enabled
+    if ! sudo ufw status | grep -q "Status: active"; then
+      echo "Enabling ufw firewall..."
+      echo "y" | sudo ufw enable
+    fi
+    echo -e "${GREEN}Firewall installed and configured.${RESET}"
+  else
+    echo "Skipping firewall installation."
+  fi
+else
+  echo -e "${GREEN}Already installed.${RESET}"
+  
+  # Ensure the necessary ports are open
+  echo "Ensuring firewall has necessary ports open..."
+  sudo ufw allow 80/tcp
+  sudo ufw allow 443/tcp
+  
+  # Check if UFW is already enabled
+  if ! sudo ufw status | grep -q "Status: active"; then
+    echo "Enabling ufw firewall..."
+    echo "y" | sudo ufw enable
+  fi
+fi
+
+echo -e "${GREEN}All required dependencies are installed.${RESET}"
 echo "========================="
 
 # Prompt for required configuration values
@@ -334,25 +414,6 @@ EOF
   # Create Nginx webroot for certbot challenges
   sudo mkdir -p /var/www/certbot
 
-  # Detect the correct Nginx user for the system
-if [ -f /etc/nginx/nginx.conf ]; then
-  NGINX_USER=$(grep -E "^user" /etc/nginx/nginx.conf | awk '{print $2}' | tr -d ';')
-  if [ -z "$NGINX_USER" ]; then
-    # Default to www-data if not found
-    NGINX_USER="www-data"
-  fi
-else
-  # Most Debian/Ubuntu systems use www-data
-  NGINX_USER="www-data"
-fi
-
-# Then update your nginx.conf creation to use this variable
-cat << EOF > nginx/nginx.conf
-user  $NGINX_USER;
-worker_processes  auto;
-...
-EOF
-  
   # Verify Nginx configuration
   if sudo nginx -t; then
     echo "Nginx configuration is valid."
@@ -423,4 +484,4 @@ else
   echo -e "${GREEN}To restart services: docker-compose restart${RESET}"
 fi
 
-echo "====================================="
+echo "===================================="

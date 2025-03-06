@@ -10,6 +10,7 @@ class YouTubeBody(BaseModel):
     youtube_url: str
     sound_name: Optional[str] = None
 
+
 class Sound(BaseModel):
     id: Optional[str] = None
     name: str
@@ -28,3 +29,4 @@ class Sound(BaseModel):
     trim_end: int = 0
     file_path: str = ""
     file_format: str = ""
+    color: str = "#00D6BF"  

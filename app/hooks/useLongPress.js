@@ -1,4 +1,3 @@
-// File: app/hooks/useLongPress.jsx
 import { useCallback, useRef } from "react";
 
 export function useLongPress(callback, ms = 500) { 

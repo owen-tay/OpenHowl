@@ -14,6 +14,7 @@ import {
   LuPlay,
   LuPause,
 } from "react-icons/lu";
+import { IoIosColorFill } from "react-icons/io";
 
 // Get the API URL from the environment variable
 const API_URL = process.env.NEXT_PUBLIC_OPENHOWL_API_URL;
@@ -52,6 +53,8 @@ export default function SoundEffectsModal(props) {
     soundData && soundData.file_format ? soundData.file_format : "";
   var playing = soundData && soundData.playing ? soundData.playing : false;
   var soundUrl = soundData && soundData.soundUrl ? soundData.soundUrl : "";
+  var initialColor = 
+    soundData && soundData.color ? soundData.color : "#65C3C8"; // Default color for bg-accent I could make this better TODO I guess
 
   if (!id || id === "default-id") {
     console.error("SoundEffectsModal: soundData.id is undefined or default");
@@ -62,6 +65,7 @@ export default function SoundEffectsModal(props) {
   const [trimEnd, setTrimEnd] = useState(initialTrimEnd);
   const [effects, setEffects] = useState(initialEffects);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [color, setColor] = useState(initialColor);
 
   function buildUpdatedSound(updatedFields) {
     if (!updatedFields) {
@@ -78,6 +82,7 @@ export default function SoundEffectsModal(props) {
       trim_end: trimEnd,
       file_path: file_path,
       file_format: file_format,
+      color: color,
       ...updatedFields,
     };
   }
@@ -97,6 +102,7 @@ export default function SoundEffectsModal(props) {
   var sentVolume = useSentValue(volume, 1000);
   var sentTrimStart = useSentValue(trimStart, 1000);
   var sentTrimEnd = useSentValue(trimEnd, 1000);
+  var sentColor = useSentValue(color, 1000);
 
   useEffect(function () {
     console.log("Updating volume for sound " + id + ": " + sentVolume);
@@ -124,6 +130,14 @@ export default function SoundEffectsModal(props) {
       console.error("Failed to update trim values:", error);
     });
   }, [sentTrimStart, sentTrimEnd, id]);
+
+  useEffect(function () {
+    console.log("Updating color for sound " + id + ": " + sentColor);
+    var updatedSound = buildUpdatedSound({ color: sentColor });
+    updateSound(updatedSound).catch(function (error) {
+      console.error("Failed to update color:", error);
+    });
+  }, [sentColor, id]);
 
   function toggleEffect(effectName) {
     var newEffects = Object.assign({}, effects);
@@ -172,9 +186,33 @@ export default function SoundEffectsModal(props) {
   return (
     <dialog open className="modal animate-fadeIn">
       <div className="modal-box">
+      <div className="relative">
+    <label htmlFor={`color-input-${id}`}>
+      <IoIosColorFill 
+        size={30} 
+        style={{ color: color }} 
+        className="cursor-pointer hover:scale-110 transition-transform" 
+      />
+    </label>
+    <input
+      id={`color-input-${id}`}
+      type="color"
+      value={color}
+      onChange={function(e) {
+        setColor(e.target.value);
+        console.log("Color updated to " + e.target.value);
+      }}
+      className="opacity-0 absolute w-0 h-0 pointer-events-none"
+    />
+  </div>
         <h3 className="font-bold text-lg flex items-center gap-2 animate-bounce justify-center">
           <LuPencil size={24} /> {name}
         </h3>
+        
+        <div className="mt-4 flex items-center justify-center gap-2">
+
+</div>
+        
         <div className="py-6">
           <div
             className="flex flex-col items-center text-accent mb-4 hover:scale-110 active:scale-110 ease-in-out duration-100 touch-none select-none hover:text-secondary active:text-secondary"
