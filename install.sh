@@ -411,10 +411,10 @@ EOF
   sudo cp -r nginx/conf.d/app.conf /etc/nginx/conf.d/
   sudo cp nginx/nginx.conf /etc/nginx/
   
-  # Create Nginx webroot for certbot challenges
+  # Verify Nginx configuration
+
   sudo mkdir -p /var/www/certbot
 
-  # Verify Nginx configuration
   if sudo nginx -t; then
     echo "Nginx configuration is valid."
     sudo systemctl restart nginx

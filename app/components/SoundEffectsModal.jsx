@@ -10,7 +10,6 @@ import {
   LuArrowUp,
   LuRotateCcw,
   LuZap,
-  LuPencil,
   LuPlay,
   LuPause,
 } from "react-icons/lu";
@@ -20,9 +19,9 @@ import { IoIosColorFill } from "react-icons/io";
 const API_URL = process.env.NEXT_PUBLIC_OPENHOWL_API_URL;
 
 export default function SoundEffectsModal(props) {
-  var isOpen = props.isOpen;
-  var onClose = props.onClose;
-  var soundData = props.soundData;
+
+  const { isOpen, onClose, soundData, onSoundUpdated } = props;
+
 
   if (!isOpen) {
     return null;
@@ -198,15 +197,18 @@ export default function SoundEffectsModal(props) {
       id={`color-input-${id}`}
       type="color"
       value={color}
-      onChange={function(e) {
-        setColor(e.target.value);
-        console.log("Color updated to " + e.target.value);
+      onChange={(e) => {
+      const newColor = e.target.value;
+      setColor(newColor);
+      console.log("Color updated to " + newColor);
+      onSoundUpdated?.({ color: newColor });
+            
       }}
       className="opacity-0 absolute w-0 h-0 pointer-events-none"
     />
   </div>
         <h3 className="font-bold text-lg flex items-center gap-2 animate-bounce justify-center">
-          <LuPencil size={24} /> {name}
+        {name}
         </h3>
         
         <div className="mt-4 flex items-center justify-center gap-2">

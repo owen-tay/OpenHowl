@@ -53,10 +53,10 @@ DATABASE_FILE = "sounds.json"
 SOUNDS_FOLDER = "sounds"
 os.makedirs(SOUNDS_FOLDER, exist_ok=True)
 
-@app.get("/test-sse")
-def test_sse(state: str = "playing", sound_id: str = "ebd8ffb5-4a20-4311-afd7-852dbc95c4fc"):
-    broadcast_event({"sound_id": sound_id, "state": state})
-    return {"message": f"Broadcasted {state} event for sound_id: {sound_id}"}
+# @app.get("/test-sse")
+# def test_sse(state: str = "playing", sound_id: str = "ebd8ffb5-4a20-4311-afd7-852dbc95c4fc"):
+#     broadcast_event({"sound_id": sound_id, "state": state})
+#     return {"message": f"Broadcasted {state} event for sound_id: {sound_id}"}
 
 @app.get("/test-sse")
 def test_sse(state: str = "playing", sound_id: str = "test-sound"):
@@ -230,60 +230,46 @@ async def startup_event():
 @app.post("/discord/play/{sound_id}")
 async def discord_play(sound_id: str):
     if not bot_instance:
-        raise HTTPException(status_code=503, detail="Discord bot is not initialized")
-    
-    # Find the first connected voice client
+        raise HTTPException(status_code=503, detail="Discord bot not ready")
+
+   
     guild_id, voice_client = await get_first_connected_voice_client()
-    
     if not guild_id or not voice_client:
-        # No active voice clients; attempt to auto-join a voice channel
-        joined = False
-        # Iterate over all guilds the bot is in
         for guild in bot_instance.guilds:
-            # Look for a voice channel with at least one non-bot member
             for channel in guild.voice_channels:
-                if any(not member.bot for member in channel.members):
+                if any(not m.bot for m in channel.members):
                     voice_client = await channel.connect()
                     voice_clients[guild.id] = voice_client
-                    guild_id = guild.id
-                    joined = True
                     break
-            if joined:
+            if voice_client:
                 break
-        if not joined:
-            raise HTTPException(status_code=400, detail="No active voice channel connections and unable to auto join")
-    
+        if not voice_client:
+            raise HTTPException(status_code=400,
+                                detail="No voice channel to join")
+
+   
+    if voice_client.is_playing():
+        voice_client.stop()          
+
+
     sound_url = f"http://127.0.0.1:8000/sounds/preview/{sound_id}"
-    
-    # Use FFmpeg to stream the sound
-    ffmpeg_options = {
+    ffmpeg_opts = {
         "options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
     }
-    audio_source = FFmpegPCMAudio(sound_url, **ffmpeg_options)
-    
-    if not voice_client.is_playing():
-        voice_client.play(audio_source)
-        # Broadcast event: sound started
-        broadcast_event({"sound_id": sound_id, "state": "playing"})
-        return {"message": f"Playing sound {sound_id} in Discord"}
-    else:
-        # Play sound in parallel by spawning a separate FFmpeg process
-        process = subprocess.Popen(
-            ["ffmpeg", "-i", sound_url, "-f", "wav", "pipe:1"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL
-        )
-        audio_source_parallel = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(process.stdout))
+    audio_source = FFmpegPCMAudio(sound_url, **ffmpeg_opts)
 
-        def after_playing(err):
-            if err:
-                print(f"Error in playback: {err}")
-            process.stdout.close()
-            process.wait()
+    def after_playback(error=None, sid=sound_id):
+        if error:
+            print(f"Playback error for {sid}: {error}")
+        broadcast_event({"sound_id": sid, "state": "stopped"})
 
-        voice_client.play(audio_source_parallel, after=after_playing)
-        broadcast_event({"sound_id": sound_id, "state": "playing", "mode": "parallel"})
-        return {"message": f"Queued sound {sound_id} for parallel playback in Discord"}
+    voice_client.play(audio_source, after=after_playback)
+
+    # GUI feedback
+    broadcast_event({"sound_id": sound_id, "state": "playing"})
+    return {"message": f"Playing sound {sound_id}"}
+
+
 
 # Modified endpoint to stop playback via Discord with SSE broadcast
 @app.post("/discord/stop")

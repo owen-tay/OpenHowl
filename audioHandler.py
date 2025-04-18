@@ -20,7 +20,6 @@ def trim_audio(audio: AudioSegment, trim_start: int, trim_end: int) -> AudioSegm
 def apply_effects(audio: AudioSegment, effects: dict, volume: int = 100) -> AudioSegment:
 
 
-    # 🔊 Apply Volume Scaling (0 - 100% → -60 dB to 0 dB)
     volume_db = (volume / 100) * 60 - 60  # Scale volume to decibels
     print(f"Applying volume: {volume}% ({volume_db:.2f} dB)")
     audio = audio + volume_db  # Adjust volume
@@ -28,7 +27,7 @@ def apply_effects(audio: AudioSegment, effects: dict, volume: int = 100) -> Audi
     if effects.get("echo", False):
         echo_delay = 150  # milliseconds
         echo_repeats = 5  # More repeats for a chaotic sound
-        print("Applying EXTREME echo effect!")
+        print("Applying EXTREME echo !")
         
         for _ in range(echo_repeats):
             delayed = audio - 10  # Reduce volume slightly each repeat
@@ -55,17 +54,14 @@ def apply_effects(audio: AudioSegment, effects: dict, volume: int = 100) -> Audi
     if effects.get("distort", False):
         print("Applying distort")
 
-        # Step 1: Boost volume HARD to force natural clipping
-        boosted = audio + 50  # Louder than normal
+        boosted = audio + 50 
 
-        # Step 2: Create a blown-out version by increasing again and overlaying
-        blown_out = boosted + 50  # Even louder for "crunch"
-        distorted = boosted.overlay(blown_out, gain_during_overlay=--0)  # Layer effect
+        blown_out = boosted + 50 
+        distorted = boosted.overlay(blown_out, gain_during_overlay=--0)  
 
-        # Step 3: Reduce final volume to prevent excessive clipping
-        distorted = distorted - 10  # Bring it down so it doesn’t clip eardrums
+        distorted = distorted - 10 
 
-        audio = distorted  # Apply the final distortion effect
+        audio = distorted  
 
     return audio
 
@@ -85,7 +81,6 @@ def _play_audio_thread(audio: AudioSegment):
     except Exception as e:
         print(f"Error playing audio: {e}")
 
-    # Cleanup after a short delay to prevent deletion before playback
     threading.Timer(5, lambda: os.remove(temp_path) if os.path.exists(temp_path) else None).start()
 
 def play_audio(audio: AudioSegment):
